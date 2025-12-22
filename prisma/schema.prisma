@@ -1,0 +1,225 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  clerkId       String   @unique
+  email         String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  trades            Trade[]
+  dailyPerformance  DailyPerformance[]
+  monthlyPerformance MonthlyPerformance[]
+  aggregatedStats   AggregatedStats[]
+  goals             Goal[]
+  journalEntries    JournalEntry[]
+  aiConversations   AIConversationHistory[]
+  strategyTags      StrategyTag[]
+
+  @@map("users")
+}
+
+model Trade {
+  id              String   @id @default(cuid())
+  userId          String
+  tradeDate       DateTime
+  tradeTime       String?
+  ticker          String
+  assetType       String // Stock, Call, Put
+  entryPrice      Float
+  exitPrice       Float?
+  quantity        Int
+  contracts       Int? // For options
+  totalInvested   Float
+  totalReturn     Float
+  percentReturn   Float
+  strategyTag     String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optionMetadata  OptionMetadata?
+
+  @@index([userId, tradeDate])
+  @@index([userId, ticker])
+  @@index([userId, assetType])
+  @@map("trades")
+}
+
+model OptionMetadata {
+  id              String   @id @default(cuid())
+  tradeId         String   @unique
+  expirationDate  DateTime?
+  strikePrice     Float?
+  timeOfDay       String? // Morning, Afternoon, Evening
+  dayOfWeek       String? // Monday, Tuesday, etc.
+  is0DTE          Boolean  @default(false)
+  isWeekly        Boolean  @default(false)
+  isMonthly       Boolean  @default(false)
+
+  trade           Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@map("option_metadata")
+}
+
+model DailyPerformance {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @db.Date
+  netPnl          Float    @default(0)
+  tradeCount      Int      @default(0)
+  winCount        Int      @default(0)
+  lossCount       Int      @default(0)
+  totalVolume     Float    @default(0)
+  avgWin          Float?
+  avgLoss          Float?
+  largestWin      Float?
+  largestLoss      Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("daily_performance")
+}
+
+model MonthlyPerformance {
+  id              String   @id @default(cuid())
+  userId          String
+  year            Int
+  month           Int // 1-12
+  netPnl          Float    @default(0)
+  tradeCount      Int      @default(0)
+  winCount        Int      @default(0)
+  lossCount       Int      @default(0)
+  greenDays       Int      @default(0)
+  redDays         Int      @default(0)
+  bestDay         Float?
+  worstDay        Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, month])
+  @@index([userId, year, month])
+  @@map("monthly_performance")
+}
+
+model AggregatedStats {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  totalPnl          Float    @default(0)
+  totalTrades       Int      @default(0)
+  winRate           Float    @default(0)
+  avgWin            Float    @default(0)
+  avgLoss            Float    @default(0)
+  riskToReward      Float    @default(0)
+  maxDrawdown       Float    @default(0)
+  profitFactor      Float    @default(0)
+  avgHoldTime       Float    @default(0) // in hours
+  bestTicker        String?
+  worstTicker       String?
+  bestStrategy      String?
+  worstStrategy     String?
+  callsPnl          Float    @default(0)
+  putsPnl           Float    @default(0)
+  stocksPnl         Float    @default(0)
+  zeroDTEPnl        Float    @default(0)
+  weeklyPnl         Float    @default(0)
+  monthlyPnl        Float    @default(0)
+  morningPnl        Float    @default(0)
+  afternoonPnl      Float    @default(0)
+  eveningPnl        Float    @default(0)
+  mondayPnl         Float    @default(0)
+  tuesdayPnl        Float    @default(0)
+  wednesdayPnl      Float    @default(0)
+  thursdayPnl       Float    @default(0)
+  fridayPnl         Float    @default(0)
+  lastUpdated       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("aggregated_stats")
+}
+
+model Goal {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  type            String // monthly_profit, max_daily_loss, max_trades_per_day, win_rate, consistency, max_size, max_contracts
+  targetValue     Float
+  timeframe       String // daily, weekly, monthly
+  currentValue    Float   @default(0)
+  status          String  @default("on_track") // on_track, at_risk, broken
+  isActive        Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@map("goals")
+}
+
+model JournalEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @db.Date
+  preMarketPlan   String?
+  marketBias      String?
+  emotionalState  String?
+  whatWentWell    String?
+  whatWentWrong   String?
+  lessonsLearned  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("journal_entries")
+}
+
+model StrategyTag {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("strategy_tags")
+}
+
+model AIConversationHistory {
+  id              String   @id @default(cuid())
+  userId          String
+  role            String // user, assistant
+  content         String
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("ai_conversation_history")
+}
+
