@@ -1,6 +1,6 @@
 # Trading Lab
 
-A production-ready web application for tracking and analyzing stock and options trading performance. Built with Next.js, TypeScript, PostgreSQL, and Tailwind CSS.
+A production-ready web application for tracking and analyzing stock and options trading performance.
 
 ## Features
 
