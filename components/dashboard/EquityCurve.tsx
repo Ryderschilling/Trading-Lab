@@ -12,6 +12,21 @@ interface EquityCurveProps {
 }
 
 export function EquityCurve({ data }: EquityCurveProps) {
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Equity Curve</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            No data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   let runningTotal = 0;
   const chartData = data.map((item) => {
     runningTotal += item.netPnl;

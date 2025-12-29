@@ -12,6 +12,21 @@ interface DailyPnlChartProps {
 }
 
 export function DailyPnlChart({ data }: DailyPnlChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Daily P&L (Last 30 Days)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            No data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const chartData = data.map((item) => ({
     date: new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     pnl: item.netPnl,
