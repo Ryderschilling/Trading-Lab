@@ -4,6 +4,8 @@ import { getGoals } from "@/lib/actions/goals";
 import { GoalsList } from "@/components/goals/GoalsList";
 import { CreateGoalButton } from "@/components/goals/CreateGoalButton";
 
+export const dynamic = 'force-dynamic';
+
 export default async function GoalsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");

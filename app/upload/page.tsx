@@ -4,6 +4,8 @@ import { ManualTradeForm } from "@/components/upload/ManualTradeForm";
 import { CSVUpload } from "@/components/upload/CSVUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+export const dynamic = 'force-dynamic';
+
 export default async function UploadPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");

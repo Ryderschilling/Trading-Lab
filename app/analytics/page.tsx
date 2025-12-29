@@ -5,6 +5,8 @@ import { AdvancedStats } from "@/components/analytics/AdvancedStats";
 import { OptionsStats } from "@/components/analytics/OptionsStats";
 import { TimePerformance } from "@/components/analytics/TimePerformance";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AnalyticsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
