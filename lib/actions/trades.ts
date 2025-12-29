@@ -379,41 +379,68 @@ async function recalculateAggregatedStats(userId: string) {
 }
 
 export async function getTrades(limit?: number) {
-  const user = await getCurrentUser();
-  if (!user) return [];
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
 
-  return prisma.trade.findMany({
-    where: { userId: user.id },
-    include: { optionMetadata: true },
-    orderBy: { tradeDate: "desc" },
-    take: limit,
-  });
+    if (!process.env.DATABASE_URL) {
+      return [];
+    }
+
+    return await prisma.trade.findMany({
+      where: { userId: user.id },
+      include: { optionMetadata: true },
+      orderBy: { tradeDate: "desc" },
+      take: limit,
+    });
+  } catch (error) {
+    console.error("Error getting trades:", error);
+    return [];
+  }
 }
 
 export async function getStats() {
-  const user = await getCurrentUser();
-  if (!user) return null;
+  try {
+    const user = await getCurrentUser();
+    if (!user) return null;
 
-  return prisma.aggregatedStats.findUnique({
-    where: { userId: user.id },
-  });
+    if (!process.env.DATABASE_URL) {
+      return null;
+    }
+
+    return await prisma.aggregatedStats.findUnique({
+      where: { userId: user.id },
+    });
+  } catch (error) {
+    console.error("Error getting stats:", error);
+    return null;
+  }
 }
 
 export async function getDailyPerformance(startDate?: Date, endDate?: Date) {
-  const user = await getCurrentUser();
-  if (!user) return [];
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
 
-  return prisma.dailyPerformance.findMany({
-    where: {
-      userId: user.id,
-      ...(startDate && endDate && {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      }),
-    },
-    orderBy: { date: "asc" },
-  });
+    if (!process.env.DATABASE_URL) {
+      return [];
+    }
+
+    return await prisma.dailyPerformance.findMany({
+      where: {
+        userId: user.id,
+        ...(startDate && endDate && {
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
+        }),
+      },
+      orderBy: { date: "asc" },
+    });
+  } catch (error) {
+    console.error("Error getting daily performance:", error);
+    return [];
+  }
 }
 

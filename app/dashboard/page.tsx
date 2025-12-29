@@ -14,11 +14,21 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const [stats, trades, dailyPerf] = await Promise.all([
-    getStats(),
-    getTrades(10),
-    getDailyPerformance(),
-  ]);
+  let stats, trades, dailyPerf;
+  
+  try {
+    [stats, trades, dailyPerf] = await Promise.all([
+      getStats(),
+      getTrades(10),
+      getDailyPerformance(),
+    ]);
+  } catch (error) {
+    console.error("Error loading dashboard data:", error);
+    // If database isn't set up, show empty state
+    stats = null;
+    trades = [];
+    dailyPerf = [];
+  }
 
   if (!stats) {
     return (
