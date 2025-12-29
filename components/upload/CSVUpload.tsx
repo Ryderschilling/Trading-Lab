@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { createTrade } from "@/lib/actions/trades";
+import { parseRobinhoodCSV, ParsedTrade } from "@/lib/utils/robinhoodParser";
 
 interface CSVRow {
   tradeDate: string;
@@ -32,25 +34,58 @@ export function CSVUpload() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<CSVRow[]>([]);
+  const [csvType, setCsvType] = useState<"robinhood" | "custom">("robinhood");
+
+  const isRobinhoodCSV = (headers: string[]): boolean => {
+    const robinhoodColumns = ["Symbol", "Side", "Quantity", "Price", "Fees", "Date", "Time"];
+    return robinhoodColumns.some(col => headers.includes(col)) || 
+           headers.some(h => h.toLowerCase().includes("robinhood"));
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    Papa.parse<CSVRow>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        if (results.errors.length > 0) {
-          setError(`CSV parsing errors: ${results.errors.map(e => e.message).join(", ")}`);
-          return;
-        }
-        setPreview(results.data.slice(0, 5)); // Show first 5 rows
-      },
-      error: (error) => {
-        setError(`Failed to parse CSV: ${error.message}`);
-      },
-    });
+    const fileText = await file.text();
+    
+      // First, try to detect if it's Robinhood format
+      Papa.parse(fileText, {
+        header: true,
+        skipEmptyLines: true,
+        preview: 1, // Just check first row
+        complete: (results) => {
+          if (results.errors.length > 0 && results.errors[0].row !== 0) {
+            // Ignore errors if we're just previewing
+          }
+
+          const headers = Object.keys(results.data[0] || {});
+          const isRobinhood = isRobinhoodCSV(headers);
+          setCsvType(isRobinhood ? "robinhood" : "custom");
+
+          if (isRobinhood) {
+            try {
+              const parsed = parseRobinhoodCSV(fileText);
+              setPreview(parsed.slice(0, 5));
+              setError(null);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Failed to parse Robinhood CSV");
+            }
+          } else {
+            // Parse as custom format
+            Papa.parse<CSVRow>(fileText, {
+              header: true,
+              skipEmptyLines: true,
+              complete: (fullResults) => {
+                setPreview(fullResults.data.slice(0, 5));
+                setError(null);
+              },
+            });
+          }
+        },
+        error: (error) => {
+          setError(`Failed to parse CSV: ${error.message}`);
+        },
+      });
   };
 
   const handleUpload = async () => {
@@ -65,61 +100,83 @@ export function CSVUpload() {
     setError(null);
 
     try {
-      Papa.parse<CSVRow>(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          try {
-            for (const row of results.data) {
-              const formData = new FormData();
-              
-              // Map CSV columns to form data
-              Object.entries(row).forEach(([key, value]) => {
-                if (value) formData.append(key, value);
-              });
+      const fileText = await file.text();
+      let tradesToUpload: ParsedTrade[] = [];
 
-              // Calculate missing fields
-              const entryPrice = parseFloat(row.entryPrice);
-              const exitPrice = row.exitPrice ? parseFloat(row.exitPrice) : entryPrice;
-              const quantity = parseInt(row.quantity);
-              const contracts = row.contracts ? parseInt(row.contracts) : 0;
-              
-              if (!row.totalInvested) {
-                const totalInvested = entryPrice * quantity * (contracts || 1);
-                formData.append("totalInvested", totalInvested.toString());
-              }
-              
-              if (!row.totalReturn) {
-                const totalReturn = (exitPrice - entryPrice) * quantity * (contracts || 1);
-                formData.append("totalReturn", totalReturn.toString());
-              }
-              
-              if (!row.percentReturn && row.totalInvested) {
-                const totalInvested = parseFloat(row.totalInvested);
-                const totalReturn = row.totalReturn ? parseFloat(row.totalReturn) : (exitPrice - entryPrice) * quantity * (contracts || 1);
-                const percentReturn = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
-                formData.append("percentReturn", percentReturn.toString());
-              }
+      if (csvType === "robinhood") {
+        // Parse Robinhood CSV
+        tradesToUpload = parseRobinhoodCSV(fileText);
+      } else {
+        // Parse custom CSV format
+        const parsePromise = new Promise<ParsedTrade[]>((resolve, reject) => {
+          Papa.parse<CSVRow>(fileText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              const trades = results.data.map((row) => ({
+                tradeDate: row.tradeDate,
+                tradeTime: row.tradeTime,
+                ticker: row.ticker,
+                assetType: row.assetType,
+                expirationDate: row.expirationDate,
+                strikePrice: row.strikePrice,
+                entryPrice: row.entryPrice,
+                exitPrice: row.exitPrice,
+                quantity: row.quantity,
+                contracts: row.contracts,
+                totalInvested: row.totalInvested,
+                totalReturn: row.totalReturn,
+                percentReturn: row.percentReturn,
+                strategyTag: row.strategyTag,
+                notes: row.notes,
+              }));
+              resolve(trades);
+            },
+            error: reject,
+          });
+        });
+        tradesToUpload = await parsePromise;
+      }
 
-              await createTrade(formData);
+      if (tradesToUpload.length === 0) {
+        setError("No valid trades found in CSV file");
+        setLoading(false);
+        return;
+      }
+
+      // Upload all trades
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const trade of tradesToUpload) {
+        try {
+          const formData = new FormData();
+          Object.entries(trade).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+              formData.append(key, value.toString());
             }
+          });
 
-            router.refresh();
-            setPreview([]);
-            fileInput.value = "";
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to upload trades");
-          } finally {
-            setLoading(false);
-          }
-        },
-        error: (error) => {
-          setError(`Failed to parse CSV: ${error.message}`);
-          setLoading(false);
-        },
-      });
+          await createTrade(formData);
+          successCount++;
+        } catch (err) {
+          console.error("Error creating trade:", err);
+          errorCount++;
+        }
+      }
+
+      if (errorCount > 0) {
+        setError(`${successCount} trades uploaded, ${errorCount} failed`);
+      } else {
+        setError(null);
+      }
+
+      router.refresh();
+      setPreview([]);
+      fileInput.value = "";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload file");
+      setError(err instanceof Error ? err.message : "Failed to upload trades");
+    } finally {
       setLoading(false);
     }
   };
@@ -158,7 +215,7 @@ export function CSVUpload() {
       <CardHeader>
         <CardTitle>CSV Upload</CardTitle>
         <CardDescription>
-          Upload your trades via CSV file. Download the template below to get started.
+          Upload your trades via CSV file. Supports Robinhood CSV exports or custom format.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -185,7 +242,14 @@ export function CSVUpload() {
 
           {preview.length > 0 && (
             <div className="space-y-2">
-              <h3 className="font-semibold">Preview (first 5 rows)</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Preview (first 5 rows)</h3>
+                {csvType === "robinhood" && (
+                  <span className="text-xs bg-neon-green/20 text-neon-green px-2 py-1 rounded">
+                    ✓ Robinhood Format Detected
+                  </span>
+                )}
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full border border-border rounded-lg">
                   <thead>
