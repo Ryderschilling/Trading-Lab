@@ -14,7 +14,9 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  let stats, trades, dailyPerf;
+  let stats: Awaited<ReturnType<typeof getStats>> = null;
+  let trades: Awaited<ReturnType<typeof getTrades>> = [];
+  let dailyPerf: Awaited<ReturnType<typeof getDailyPerformance>> = [];
   
   try {
     [stats, trades, dailyPerf] = await Promise.all([
