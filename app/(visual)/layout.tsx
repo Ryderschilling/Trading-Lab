@@ -9,10 +9,8 @@ export const metadata: Metadata = {
   description: "Visual editor for Trading Lab",
 };
 
-// Force this layout to be used instead of root layout
-export const dynamic = 'force-dynamic';
-
-export default function VisualEditorLayout({
+// This layout is for the (visual) route group and bypasses the root layout
+export default function VisualLayout({
   children,
 }: {
   children: React.ReactNode;
