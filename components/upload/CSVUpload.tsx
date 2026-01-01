@@ -104,7 +104,14 @@ export function CSVUpload() {
 
       if (csvType === "robinhood") {
         // Parse Robinhood CSV
-        tradesToUpload = parseRobinhoodCSV(fileText);
+        try {
+          tradesToUpload = parseRobinhoodCSV(fileText);
+        } catch (parseError) {
+          const errorMessage = parseError instanceof Error ? parseError.message : "Failed to parse Robinhood CSV";
+          setError(`CSV Parsing Error: ${errorMessage}. Please ensure your CSV file is a valid Robinhood export.`);
+          setLoading(false);
+          return;
+        }
       } else {
         // Parse custom CSV format
         const parsePromise = new Promise<ParsedTrade[]>((resolve, reject) => {
@@ -204,7 +211,10 @@ export function CSVUpload() {
       }
     } catch (err) {
       console.error("Upload error:", err);
-      setError(err instanceof Error ? err.message : "Failed to upload trades. Please check the CSV format.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to upload trades";
+      const fullError = err instanceof Error ? err.stack || err.message : String(err);
+      console.error("Full error details:", fullError);
+      setError(`Upload Error: ${errorMessage}. Please check the CSV format and try again.`);
     } finally {
       setLoading(false);
     }

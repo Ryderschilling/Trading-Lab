@@ -27,9 +27,21 @@ export interface ParsedTrade {
  * Robinhood exports individual transactions (Buy/Sell), so we match pairs
  */
 export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
-  const results = Papa.parse<RobinhoodTrade>(csvText, {
+  // Split into lines - skip first 10 rows (rows 0-9) which contain header/terms
+  // Row 10 (0-indexed) should be the actual CSV header row
+  const lines = csvText.split('\n');
+  
+  if (lines.length <= 10) {
+    throw new Error("CSV file appears to be too short. Please ensure you're using a valid Robinhood export with at least 11 rows.");
+  }
+  
+  // Skip first 10 rows (rows 0-9), keep row 10+ which should have header and data
+  const dataLines = lines.slice(10).join('\n');
+  
+  const results = Papa.parse<RobinhoodTrade>(dataLines, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: (header) => header.trim(),
   });
 
   if (results.errors.length > 0 && results.errors.some(e => e.type === "Quotes")) {
