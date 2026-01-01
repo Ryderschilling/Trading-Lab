@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { createTrade } from "@/lib/actions/trades";
 import { parseRobinhoodCSV, ParsedTrade } from "@/lib/utils/robinhoodParser";
@@ -147,35 +146,65 @@ export function CSVUpload() {
       // Upload all trades
       let successCount = 0;
       let errorCount = 0;
+      const errors: string[] = [];
       
       for (const trade of tradesToUpload) {
         try {
           const formData = new FormData();
-          Object.entries(trade).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== "") {
-              formData.append(key, value.toString());
-            }
-          });
+          
+          // Ensure all required fields are present with valid values
+          formData.append("tradeDate", trade.tradeDate || new Date().toISOString().split("T")[0]);
+          if (trade.tradeTime) formData.append("tradeTime", trade.tradeTime);
+          formData.append("ticker", trade.ticker || "");
+          formData.append("assetType", trade.assetType || "Stock");
+          formData.append("entryPrice", trade.entryPrice || "0");
+          if (trade.exitPrice) formData.append("exitPrice", trade.exitPrice);
+          formData.append("quantity", trade.quantity || "0");
+          if (trade.contracts) formData.append("contracts", trade.contracts);
+          formData.append("totalInvested", trade.totalInvested || "0");
+          formData.append("totalReturn", trade.totalReturn || "0");
+          if (trade.percentReturn) formData.append("percentReturn", trade.percentReturn);
+          if (trade.strategyTag) formData.append("strategyTag", trade.strategyTag);
+          if (trade.notes) formData.append("notes", trade.notes);
+          if (trade.expirationDate) formData.append("expirationDate", trade.expirationDate);
+          if (trade.strikePrice) formData.append("strikePrice", trade.strikePrice);
+
+          // Validate required fields
+          if (!trade.ticker || !trade.tradeDate || !trade.entryPrice) {
+            throw new Error(`Missing required fields for trade: ${trade.ticker || "Unknown"}`);
+          }
 
           await createTrade(formData);
           successCount++;
         } catch (err) {
           console.error("Error creating trade:", err);
           errorCount++;
+          const errorMsg = err instanceof Error ? err.message : "Unknown error";
+          errors.push(`${trade.ticker || "Unknown"}: ${errorMsg}`);
         }
       }
 
       if (errorCount > 0) {
-        setError(`${successCount} trades uploaded, ${errorCount} failed`);
+        const errorMessage = `${successCount} trades uploaded successfully, ${errorCount} failed.${errors.length > 0 ? ` Errors: ${errors.slice(0, 3).join("; ")}${errors.length > 3 ? "..." : ""}` : ""}`;
+        setError(errorMessage);
       } else {
         setError(null);
+        // Show success message briefly
+        setTimeout(() => {
+          router.refresh();
+          setPreview([]);
+          fileInput.value = "";
+        }, 1000);
       }
 
-      router.refresh();
-      setPreview([]);
-      fileInput.value = "";
+      if (errorCount === 0) {
+        router.refresh();
+        setPreview([]);
+        fileInput.value = "";
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload trades");
+      console.error("Upload error:", err);
+      setError(err instanceof Error ? err.message : "Failed to upload trades. Please check the CSV format.");
     } finally {
       setLoading(false);
     }

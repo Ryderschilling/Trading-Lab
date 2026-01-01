@@ -8,21 +8,66 @@ export async function createTrade(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  const tradeDate = new Date(formData.get("tradeDate") as string);
-  const tradeTime = formData.get("tradeTime") as string;
-  const ticker = formData.get("ticker") as string;
-  const assetType = formData.get("assetType") as string;
-  const entryPrice = parseFloat(formData.get("entryPrice") as string);
+  // Get and validate required fields
+  const tradeDateStr = formData.get("tradeDate") as string;
+  if (!tradeDateStr) {
+    throw new Error("Trade date is required");
+  }
+  
+  const tradeDate = new Date(tradeDateStr);
+  if (isNaN(tradeDate.getTime())) {
+    throw new Error(`Invalid trade date: ${tradeDateStr}`);
+  }
+
+  const ticker = (formData.get("ticker") as string)?.trim();
+  if (!ticker) {
+    throw new Error("Ticker is required");
+  }
+
+  const assetType = (formData.get("assetType") as string) || "Stock";
+  const entryPriceStr = formData.get("entryPrice") as string;
+  const entryPrice = parseFloat(entryPriceStr);
+  if (isNaN(entryPrice)) {
+    throw new Error(`Invalid entry price: ${entryPriceStr}`);
+  }
+
+  const quantityStr = formData.get("quantity") as string;
+  const quantity = parseInt(quantityStr);
+  if (isNaN(quantity) || quantity <= 0) {
+    throw new Error(`Invalid quantity: ${quantityStr}`);
+  }
+
+  const totalInvestedStr = formData.get("totalInvested") as string;
+  const totalInvested = parseFloat(totalInvestedStr);
+  if (isNaN(totalInvested)) {
+    throw new Error(`Invalid total invested: ${totalInvestedStr}`);
+  }
+
+  const totalReturnStr = formData.get("totalReturn") as string;
+  const totalReturn = parseFloat(totalReturnStr);
+  if (isNaN(totalReturn)) {
+    throw new Error(`Invalid total return: ${totalReturnStr}`);
+  }
+
+  const tradeTime = formData.get("tradeTime") as string | null;
   const exitPrice = formData.get("exitPrice") ? parseFloat(formData.get("exitPrice") as string) : null;
-  const quantity = parseInt(formData.get("quantity") as string);
   const contracts = formData.get("contracts") ? parseInt(formData.get("contracts") as string) : null;
-  const totalInvested = parseFloat(formData.get("totalInvested") as string);
-  const totalReturn = parseFloat(formData.get("totalReturn") as string);
-  const percentReturn = parseFloat(formData.get("percentReturn") as string);
+  const percentReturnStr = formData.get("percentReturn") as string;
+  const percentReturn = percentReturnStr ? parseFloat(percentReturnStr) : (totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0);
   const strategyTag = formData.get("strategyTag") as string | null;
   const notes = formData.get("notes") as string | null;
-  const expirationDate = formData.get("expirationDate") ? new Date(formData.get("expirationDate") as string) : null;
-  const strikePrice = formData.get("strikePrice") ? parseFloat(formData.get("strikePrice") as string) : null;
+  
+  let expirationDate: Date | null = null;
+  const expirationDateStr = formData.get("expirationDate") as string;
+  if (expirationDateStr) {
+    expirationDate = new Date(expirationDateStr);
+    if (isNaN(expirationDate.getTime())) {
+      expirationDate = null; // Invalid date, ignore it
+    }
+  }
+  
+  const strikePriceStr = formData.get("strikePrice") as string;
+  const strikePrice = strikePriceStr ? parseFloat(strikePriceStr) : null;
 
   // Combine date and time if time is provided
   let finalDate = tradeDate;
