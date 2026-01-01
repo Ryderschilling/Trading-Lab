@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { Search, Bell, MessageCircle, User } from "lucide-react";
+import { Search, Bell, MessageCircle, User, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
@@ -22,6 +22,14 @@ export function Navbar() {
           </div>
         </div>
         <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => window.open("/visual-editor", "_blank", "width=1400,height=900")}
+            title="Open Visual Editor"
+          >
+            <Palette className="w-5 h-5" />
+          </Button>
           <Button variant="ghost" size="icon">
             <MessageCircle className="w-5 h-5" />
           </Button>
