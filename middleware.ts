@@ -1,18 +1,32 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-export default clerkMiddleware((auth, req) => {
-  // Skip Clerk for visual editor routes
-  if (req.nextUrl.pathname.startsWith('/visual-editor')) {
-    const response = NextResponse.next();
-    response.headers.set('x-pathname', req.nextUrl.pathname);
-    return response;
-  }
-  
-  const response = NextResponse.next();
-  response.headers.set('x-pathname', req.nextUrl.pathname);
-  return response;
-});
+// Define routes that don't need Clerk authentication
+const isPublicRoute = createRouteMatcher([
+  '/visual-editor(.*)',
+]);
+
+// Check if Clerk keys are configured
+const hasClerkKeys = !!(
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && 
+  process.env.CLERK_SECRET_KEY
+);
+
+// Only use Clerk middleware if keys are configured
+export default hasClerkKeys
+  ? clerkMiddleware(async (auth, req) => {
+      // Skip Clerk for public routes (like visual editor)
+      if (isPublicRoute(req)) {
+        return NextResponse.next();
+      }
+      
+      // For other routes, Clerk will handle authentication
+      return NextResponse.next();
+    })
+  : async (req: any) => {
+      // If Clerk keys are missing, just pass through without authentication
+      return NextResponse.next();
+    };
 
 export const config = {
   matcher: [
@@ -23,4 +37,3 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 };
-
