@@ -61,46 +61,72 @@ export function CSVUpload() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setError(null);
     const fileText = await file.text();
     
-      // First, try to detect if it's Robinhood format
-      Papa.parse(fileText, {
-        header: true,
-        skipEmptyLines: true,
-        preview: 1, // Just check first row
-        complete: (results) => {
-          if (results.errors.length > 0 && results.errors[0].row !== 0) {
-            // Ignore errors if we're just previewing
-          }
+    // First, try to detect if it's Robinhood format
+    Papa.parse(fileText, {
+      header: true,
+      skipEmptyLines: true,
+      preview: 1, // Just check first row
+      complete: (results) => {
+        if (results.errors.length > 0 && results.errors[0].row !== 0) {
+          // Ignore errors if we're just previewing
+        }
 
-          const headers = Object.keys(results.data[0] || {});
-          const isRobinhood = isRobinhoodCSV(headers);
-          setCsvType(isRobinhood ? "robinhood" : "custom");
+        const headers = Object.keys(results.data[0] || {});
+        console.log("CSV Headers detected:", headers);
+        const isRobinhood = isRobinhoodCSV(headers);
+        console.log("Is Robinhood CSV:", isRobinhood);
+        setCsvType(isRobinhood ? "robinhood" : "custom");
 
-          if (isRobinhood) {
-            try {
-              const parsed = parseRobinhoodCSV(fileText);
-              setPreview(parsed.slice(0, 5));
+        if (isRobinhood) {
+          try {
+            const parsed = parseRobinhoodCSV(fileText);
+            console.log("Parsed trades:", parsed.length);
+            if (parsed.length > 0) {
+              setPreview(parsed.slice(0, 5).map(t => ({
+                tradeDate: t.tradeDate,
+                tradeTime: t.tradeTime,
+                ticker: t.ticker,
+                assetType: t.assetType,
+                expirationDate: t.expirationDate,
+                strikePrice: t.strikePrice,
+                entryPrice: t.entryPrice,
+                exitPrice: t.exitPrice,
+                quantity: t.quantity,
+                contracts: t.contracts,
+                totalInvested: t.totalInvested,
+                totalReturn: t.totalReturn,
+                percentReturn: t.percentReturn,
+                strategyTag: t.strategyTag,
+                notes: t.notes,
+              })));
               setError(null);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Failed to parse Robinhood CSV");
+            } else {
+              setError("No valid trades found in CSV file");
             }
-          } else {
-            // Parse as custom format
-            Papa.parse<CSVRow>(fileText, {
-              header: true,
-              skipEmptyLines: true,
-              complete: (fullResults) => {
-                setPreview(fullResults.data.slice(0, 5));
-                setError(null);
-              },
-            });
+          } catch (err) {
+            console.error("Parse error:", err);
+            setError(err instanceof Error ? err.message : "Failed to parse Robinhood CSV");
           }
-        },
-        error: (error: Error) => {
-          setError(`Failed to parse CSV: ${error.message}`);
-        },
-      });
+        } else {
+          // Parse as custom format
+          Papa.parse<CSVRow>(fileText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (fullResults) => {
+              setPreview(fullResults.data.slice(0, 5));
+              setError(null);
+            },
+          });
+        }
+      },
+      error: (error: Error) => {
+        console.error("CSV parse error:", error);
+        setError(`Failed to parse CSV: ${error.message}`);
+      },
+    });
   };
 
   const handleUpload = async () => {
