@@ -23,25 +23,93 @@ export interface ParsedTrade {
 }
 
 /**
+ * Parse amount string with $ and parentheses (e.g., "$152.93" or "($126.04)")
+ */
+function parseAmount(amountStr: string): number {
+  if (!amountStr) return 0;
+  const cleaned = amountStr.replace(/,/g, "").replace(/\$/g, "").trim();
+  if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
+    return -parseFloat(cleaned.slice(1, -1)) || 0;
+  }
+  return parseFloat(cleaned) || 0;
+}
+
+/**
+ * Parse price string with $ (e.g., "$0.51")
+ */
+function parsePrice(priceStr: string): number {
+  if (!priceStr) return 0;
+  return parseFloat(priceStr.replace(/,/g, "").replace(/\$/g, "").trim()) || 0;
+}
+
+/**
+ * Parse description to extract option details
+ * Format: "SPY 12/31/2025 Put $684.00" or "SPY 12/31/2025 Call $684.00"
+ */
+function parseDescription(description: string): {
+  ticker: string;
+  expirationDate?: string;
+  strikePrice?: string;
+  assetType: string;
+} {
+  if (!description) {
+    return { ticker: "", assetType: "Stock" };
+  }
+
+  // Check if it's an option (has date and strike price pattern)
+  const optionMatch = description.match(/^([A-Z]+)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(Call|Put)\s+\$?([\d,]+\.?\d*)/i);
+  if (optionMatch) {
+    const [, ticker, expDate, callPut, strike] = optionMatch;
+    const assetType = callPut.toLowerCase() === "put" ? "Put" : "Call";
+    
+    // Format expiration date to YYYY-MM-DD
+    const dateParts = expDate.split("/");
+    if (dateParts.length === 3) {
+      const year = dateParts[2].length === 2 ? `20${dateParts[2]}` : dateParts[2];
+      const formattedDate = `${year}-${dateParts[0].padStart(2, "0")}-${dateParts[1].padStart(2, "0")}`;
+      return {
+        ticker: ticker.toUpperCase(),
+        expirationDate: formattedDate,
+        strikePrice: strike.replace(/,/g, ""),
+        assetType,
+      };
+    }
+  }
+
+  // Check if it's a stock (just ticker, no option details)
+  const stockMatch = description.match(/^([A-Z]+)(\s|$)/i);
+  if (stockMatch) {
+    return {
+      ticker: stockMatch[1].toUpperCase(),
+      assetType: "Stock",
+    };
+  }
+
+  return { ticker: "", assetType: "Stock" };
+}
+
+/**
  * Maps Robinhood CSV format to our trade format
  * Robinhood exports individual transactions (Buy/Sell), so we match pairs
  */
 export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
-  // Split into lines - skip first 10 rows (rows 0-9) which contain header/terms
-  // Row 10 (0-indexed) should be the actual CSV header row
-  const lines = csvText.split('\n');
+  // Split into lines to check for terms row at the end
+  const lines = csvText.split('\n').filter(line => line.trim() !== '');
   
-  if (lines.length <= 10) {
-    throw new Error("CSV file appears to be too short. Please ensure you're using a valid Robinhood export with at least 11 rows.");
+  // Remove last row if it looks like terms/conditions (doesn't have standard columns)
+  if (lines.length > 1) {
+    const lastLine = lines[lines.length - 1].toLowerCase();
+    if (lastLine.includes("terms") || lastLine.includes("condition") || 
+        lastLine.includes("disclaimer") || !lastLine.includes(",")) {
+      lines.pop();
+    }
   }
   
-  // Skip first 10 rows (rows 0-9), keep row 10+ which should have header and data
-  const dataLines = lines.slice(10).join('\n');
+  const cleanedCsv = lines.join('\n');
   
-  const results = Papa.parse<RobinhoodTrade>(dataLines, {
+  const results = Papa.parse<RobinhoodTrade>(cleanedCsv, {
     header: true,
     skipEmptyLines: true,
-    transformHeader: (header) => header.trim(),
   });
 
   if (results.errors.length > 0 && results.errors.some(e => e.type === "Quotes")) {
@@ -70,92 +138,63 @@ export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
 
   const transactions: Transaction[] = results.data
     .map((row) => {
-      // Try various column name variations
-      const symbol = (row["Symbol"] || row["symbol"] || row["Ticker"] || row["Instrument"] || row["symbol"] || "").toString().trim();
-      if (!symbol) return null;
+      // Get columns - handle both quoted and unquoted headers
+      const instrument = (row["Instrument"] || row["instrument"] || "").toString().trim();
+      const description = (row["Description"] || row["description"] || "").toString().trim();
+      const transCode = (row["Trans Code"] || row["trans code"] || row["TransCode"] || "").toString().trim().toUpperCase();
+      const quantityStr = (row["Quantity"] || row["quantity"] || "").toString().trim();
+      const priceStr = (row["Price"] || row["price"] || "").toString().trim();
+      const amountStr = (row["Amount"] || row["amount"] || "").toString().trim();
+      const activityDate = (row["Activity Date"] || row["activity date"] || row["ActivityDate"] || "").toString().trim();
 
-      const side = (row["Side"] || row["side"] || row["Type"] || row["Direction"] || row["Transaction Type"] || "").toString().toLowerCase();
-      const quantityStr = (row["Quantity"] || row["quantity"] || row["Shares"] || row["Filled Quantity"] || row["Qty"] || "0").toString().replace(/,/g, "");
-      const priceStr = (row["Price"] || row["price"] || row["Average Price"] || row["Filled Price"] || row["Executed Price"] || "0").toString().replace(/,/g, "");
-      const feesStr = (row["Fees"] || row["fees"] || row["Commission"] || row["Commission & Fees"] || row["Total Fees"] || "0").toString().replace(/,/g, "");
-      const date = (row["Date"] || row["date"] || row["Time"] || row["Executed At"] || row["Time in Force"] || row["Transaction Date"] || "").toString();
-      const orderType = (row["Order Type"] || row["order_type"] || row["Order Type"] || "").toString();
+      // Skip non-trade transactions (Interest, Transfers, etc.)
+      if (!transCode || (transCode !== "BTO" && transCode !== "STC" && transCode !== "STO" && transCode !== "BTC" && 
+          transCode !== "BUY" && transCode !== "SELL")) {
+        return null;
+      }
+
+      // Parse description to get ticker and option details
+      const descInfo = parseDescription(description);
+      if (!descInfo.ticker && instrument) {
+        descInfo.ticker = instrument.toUpperCase();
+      }
       
-      const quantity = Math.abs(parseFloat(quantityStr) || 0);
-      const price = Math.abs(parseFloat(priceStr) || 0);
-      const fees = Math.abs(parseFloat(feesStr) || 0);
+      if (!descInfo.ticker) {
+        return null; // Skip rows without ticker
+      }
 
-      if (quantity === 0 || price === 0) {
+      const quantity = parseFloat(quantityStr.replace(/,/g, "")) || 0;
+      const price = parsePrice(priceStr);
+      const amount = parseAmount(amountStr);
+      
+      // Calculate fees from amount difference (Amount = Price * Quantity - Fees)
+      const expectedAmount = price * quantity;
+      const fees = Math.abs(expectedAmount - Math.abs(amount));
+
+      if (quantity === 0 || (price === 0 && amount === 0)) {
         return null; // Skip invalid transactions
       }
-      
-      // Determine asset type
-      let assetType = "Stock";
-      let expirationDate: string | undefined;
-      let strikePrice: string | undefined;
 
-      // Check if it's an option - look for common option indicators
-      const optionSymbol = (row["Option Symbol"] || row["Option"] || "").toString();
-      const hasStrikePrice = row["Strike Price"] || row["Strike"] || row["strike"];
-      const hasExpiration = row["Expiration Date"] || row["Expiration"] || row["Expiry"];
-      
-      if (optionSymbol || hasStrikePrice || hasExpiration || symbol.match(/\d{2}\/\d{2}\/\d{2,4}/) || symbol.includes(" ")) {
-        // Extract option details
-        if (hasStrikePrice) {
-          strikePrice = hasStrikePrice.toString();
-        }
-        if (hasExpiration) {
-          expirationDate = hasExpiration.toString();
-        }
-        
-        // Determine Call or Put
-        const symbolUpper = symbol.toUpperCase();
-        if (optionSymbol.toLowerCase().includes("call") || symbolUpper.includes(" C ") || symbolUpper.endsWith("C") || symbolUpper.includes("CALL")) {
-          assetType = "Call";
-        } else if (optionSymbol.toLowerCase().includes("put") || symbolUpper.includes(" P ") || symbolUpper.endsWith("P") || symbolUpper.includes("PUT")) {
-          assetType = "Put";
-        } else {
-          assetType = "Call"; // Default to Call
-        }
-      }
+      // Determine side from Trans Code
+      // BTO (Buy to Open) and BTC (Buy to Close) = Buy
+      // STC (Sell to Close) and STO (Sell to Open) = Sell
+      const isBuy = transCode === "BTO" || transCode === "BTC" || transCode === "BUY";
+      const side = isBuy ? "buy" : "sell";
 
-      // Parse date - handle various formats
-      let tradeDate = date.trim();
-      let tradeTime: string | undefined;
-      
-      if (date.includes(" ")) {
-        const parts = date.split(" ");
-        tradeDate = parts[0];
-        if (parts[1]) {
-          // Extract time (HH:MM:SS or HH:MM)
-          const timeMatch = parts[1].match(/(\d{1,2}):(\d{2})/);
-          if (timeMatch) {
-            tradeTime = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
-          }
-        }
-      }
-
-      // Format date to YYYY-MM-DD
+      // Parse date (MM/DD/YYYY format)
+      let tradeDate = activityDate;
       if (tradeDate && !tradeDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // Try parsing as Date object
-        const parsed = new Date(tradeDate);
-        if (!isNaN(parsed.getTime())) {
-          tradeDate = parsed.toISOString().split("T")[0];
+        const parts = tradeDate.split("/");
+        if (parts.length === 3) {
+          const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+          tradeDate = `${year}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
         } else {
-          // Try MM/DD/YYYY format
-          const parts = tradeDate.split("/");
-          if (parts.length === 3) {
-            const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-            tradeDate = `${year}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+          // Try parsing as Date object
+          const parsed = new Date(tradeDate);
+          if (!isNaN(parsed.getTime())) {
+            tradeDate = parsed.toISOString().split("T")[0];
           } else {
-            // Try YYYY-MM-DD with different separators
-            const dashParts = tradeDate.split("-");
-            if (dashParts.length === 3) {
-              tradeDate = tradeDate;
-            } else {
-              // Default to today if can't parse
-              tradeDate = new Date().toISOString().split("T")[0];
-            }
+            tradeDate = new Date().toISOString().split("T")[0];
           }
         }
       }
@@ -164,19 +203,26 @@ export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
         tradeDate = new Date().toISOString().split("T")[0];
       }
 
-      return {
-        symbol: symbol.toUpperCase().split(" ")[0].split("\t")[0], // Clean symbol
+      const transaction: Transaction = {
+        symbol: descInfo.ticker,
         side,
-        quantity,
-        price,
+        quantity: Math.abs(quantity),
+        price: Math.abs(price),
         fees,
         tradeDate,
-        tradeTime,
-        assetType,
-        expirationDate,
-        strikePrice,
-        orderType,
+        assetType: descInfo.assetType,
+        orderType: transCode,
       };
+      
+      if (descInfo.expirationDate) {
+        transaction.expirationDate = descInfo.expirationDate;
+      }
+      
+      if (descInfo.strikePrice) {
+        transaction.strikePrice = descInfo.strikePrice;
+      }
+      
+      return transaction;
     })
     .filter((t): t is Transaction => t !== null && t.symbol.length > 0);
 
@@ -259,7 +305,7 @@ export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
   }
 
   // Add any remaining unmatched buys as open positions
-  for (const [key, buys] of pendingBuys.entries()) {
+  for (const [key, buys] of Array.from(pendingBuys.entries())) {
     for (const buy of buys) {
       const qty = buy.quantity;
       const price = buy.price;
