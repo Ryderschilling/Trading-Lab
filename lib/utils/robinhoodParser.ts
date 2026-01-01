@@ -56,8 +56,12 @@ function parseDescription(description: string): {
     return { ticker: "", assetType: "Stock" };
   }
 
+  // Clean up description - remove newlines and extra whitespace
+  const cleaned = description.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+
   // Check if it's an option (has date and strike price pattern)
-  const optionMatch = description.match(/^([A-Z]+)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(Call|Put)\s+\$?([\d,]+\.?\d*)/i);
+  // Pattern: TICKER MM/DD/YYYY Call/Put $STRIKE
+  const optionMatch = cleaned.match(/^([A-Z]+)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(Call|Put)\s+\$?([\d,]+\.?\d*)/i);
   if (optionMatch) {
     const [, ticker, expDate, callPut, strike] = optionMatch;
     const assetType = callPut.toLowerCase() === "put" ? "Put" : "Call";
@@ -76,8 +80,9 @@ function parseDescription(description: string): {
     }
   }
 
-  // Check if it's a stock (just ticker, no option details)
-  const stockMatch = description.match(/^([A-Z]+)(\s|$)/i);
+  // Check if it's a stock (just ticker, possibly with company name)
+  // Pattern: TICKER or TICKER Company Name
+  const stockMatch = cleaned.match(/^([A-Z]{1,5})(\s|$|,)/i);
   if (stockMatch) {
     return {
       ticker: stockMatch[1].toUpperCase(),

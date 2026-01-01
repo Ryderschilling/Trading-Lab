@@ -36,8 +36,24 @@ export function CSVUpload() {
   const [csvType, setCsvType] = useState<"robinhood" | "custom">("robinhood");
 
   const isRobinhoodCSV = (headers: string[]): boolean => {
-    const robinhoodColumns = ["Symbol", "Side", "Quantity", "Price", "Fees", "Date", "Time"];
-    return robinhoodColumns.some(col => headers.includes(col)) || 
+    // Check for actual Robinhood CSV format columns
+    const robinhoodColumns = [
+      "Activity Date", "Process Date", "Settle Date", "Instrument", 
+      "Description", "Trans Code", "Quantity", "Price", "Amount"
+    ];
+    const oldFormatColumns = ["Symbol", "Side", "Quantity", "Price", "Fees", "Date", "Time"];
+    
+    // Check if it has the new format columns
+    const hasNewFormat = robinhoodColumns.some(col => 
+      headers.some(h => h.toLowerCase() === col.toLowerCase())
+    );
+    
+    // Check if it has the old format columns
+    const hasOldFormat = oldFormatColumns.some(col => 
+      headers.some(h => h.toLowerCase() === col.toLowerCase())
+    );
+    
+    return hasNewFormat || hasOldFormat || 
            headers.some(h => h.toLowerCase().includes("robinhood"));
   };
 
@@ -81,7 +97,7 @@ export function CSVUpload() {
             });
           }
         },
-        error: (error) => {
+        error: (error: Error) => {
           setError(`Failed to parse CSV: ${error.message}`);
         },
       });
@@ -108,6 +124,7 @@ export function CSVUpload() {
           tradesToUpload = parseRobinhoodCSV(fileText);
         } catch (parseError) {
           const errorMessage = parseError instanceof Error ? parseError.message : "Failed to parse Robinhood CSV";
+          console.error("CSV Parse Error:", parseError);
           setError(`CSV Parsing Error: ${errorMessage}. Please ensure your CSV file is a valid Robinhood export.`);
           setLoading(false);
           return;
@@ -119,7 +136,7 @@ export function CSVUpload() {
             header: true,
             skipEmptyLines: true,
             complete: (results) => {
-              const trades = results.data.map((row) => ({
+              const trades: ParsedTrade[] = results.data.map((row) => ({
                 tradeDate: row.tradeDate,
                 tradeTime: row.tradeTime,
                 ticker: row.ticker,
@@ -131,14 +148,14 @@ export function CSVUpload() {
                 quantity: row.quantity,
                 contracts: row.contracts,
                 totalInvested: row.totalInvested,
-                totalReturn: row.totalReturn,
+                totalReturn: row.totalReturn || "0",
                 percentReturn: row.percentReturn,
                 strategyTag: row.strategyTag,
                 notes: row.notes,
               }));
               resolve(trades);
             },
-            error: reject,
+            error: (error: Error) => reject(error),
           });
         });
         tradesToUpload = await parsePromise;
@@ -211,10 +228,7 @@ export function CSVUpload() {
       }
     } catch (err) {
       console.error("Upload error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to upload trades";
-      const fullError = err instanceof Error ? err.stack || err.message : String(err);
-      console.error("Full error details:", fullError);
-      setError(`Upload Error: ${errorMessage}. Please check the CSV format and try again.`);
+      setError(err instanceof Error ? err.message : "Failed to upload trades. Please check the CSV format.");
     } finally {
       setLoading(false);
     }
