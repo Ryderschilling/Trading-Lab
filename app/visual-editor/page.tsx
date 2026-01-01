@@ -194,10 +194,10 @@ export default function VisualEditorPage() {
                 <div>
                   <Label>Font Weight</Label>
                   <Select
-                    value={selectedElement.style.fontWeight || "normal"}
+                    value={selectedElement.style.fontWeight?.toString() || "normal"}
                     onValueChange={(value) => setSelectedElement({
                       ...selectedElement,
-                      style: { ...selectedElement.style, fontWeight: value }
+                      style: { ...selectedElement.style, fontWeight: value as any }
                     })}
                   >
                     <SelectTrigger>
