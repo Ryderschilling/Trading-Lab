@@ -11,17 +11,20 @@ export function ClerkWrapper({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Check if Clerk keys are available
-  const hasClerkKeys = !!(
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  );
+  // Check if Clerk keys are available (NEXT_PUBLIC_ vars are available in client)
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
   // Only render ClerkProvider if keys are available
-  if (!hasClerkKeys) {
+  if (!publishableKey) {
     console.warn("Clerk keys not configured. Running without authentication.");
     return <>{children}</>;
   }
 
-  return <ClerkProvider>{children}</ClerkProvider>;
+  try {
+    return <ClerkProvider>{children}</ClerkProvider>;
+  } catch (error) {
+    console.error("ClerkProvider error:", error);
+    return <>{children}</>;
+  }
 }
 
