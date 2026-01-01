@@ -9,15 +9,20 @@ export const metadata: Metadata = {
   description: "Visual editor for Trading Lab",
 };
 
+// Force this layout to be used instead of root layout
+export const dynamic = 'force-dynamic';
+
 export default function VisualEditorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
+        <div className="min-h-screen bg-background">
+          {children}
+        </div>
       </body>
     </html>
   );
