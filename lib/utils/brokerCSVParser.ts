@@ -125,16 +125,31 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
   const results = Papa.parse<BrokerTrade>(cleanedCsv, {
     header: true,
     skipEmptyLines: true,
+    quoteChar: '"',
+    escapeChar: '"',
+    newline: '\n',
+    // Handle multi-line fields properly
+    transformHeader: (header) => header.trim(),
+    transform: (value) => value.trim(),
   });
 
-  if (results.errors.length > 0 && results.errors.some(e => e.type === "Quotes")) {
-    // Non-critical errors, continue
-    console.warn("CSV parsing warnings:", results.errors);
+  // Log parsing errors for debugging
+  if (results.errors.length > 0) {
+    const criticalErrors = results.errors.filter(e => e.type !== "Quotes" && e.type !== "Delimiter");
+    if (criticalErrors.length > 0) {
+      console.error("CSV parsing errors:", criticalErrors);
+      throw new Error(`CSV parsing failed: ${criticalErrors[0].message || "Invalid CSV format"}`);
+    } else {
+      // Non-critical errors (quotes, delimiters), continue
+      console.warn("CSV parsing warnings:", results.errors);
+    }
   }
 
   if (!results.data || results.data.length === 0) {
     throw new Error("CSV file is empty or has no valid data rows");
   }
+
+  console.log(`Parsed ${results.data.length} rows from CSV`);
 
   // Group transactions by symbol to match buy/sell pairs
   interface Transaction {
@@ -152,20 +167,24 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
   }
 
   const transactions: Transaction[] = results.data
-    .map((row) => {
-      // Get columns - handle case sensitivity (Instrument with capital I)
-      const instrument = (row["Instrument"] || row["instrument"] || "").toString().trim();
-      const description = (row["Description"] || row["description"] || "").toString().trim();
-      const transCode = (row["Trans Code"] || row["trans code"] || row["TransCode"] || "").toString().trim().toUpperCase();
-      const quantityStr = (row["Quantity"] || row["quantity"] || "").toString().trim();
-      const priceStr = (row["Price"] || row["price"] || "").toString().trim();
-      const amountStr = (row["Amount"] || row["amount"] || "").toString().trim();
-      const activityDate = (row["Activity Date"] || row["activity date"] || row["ActivityDate"] || "").toString().trim();
+    .map((row, index) => {
+      try {
+        // Get columns - handle case sensitivity (Instrument with capital I)
+        const instrument = (row["Instrument"] || row["instrument"] || "").toString().trim();
+        const description = (row["Description"] || row["description"] || "").toString().trim();
+        const transCode = (row["Trans Code"] || row["trans code"] || row["TransCode"] || "").toString().trim().toUpperCase();
+        const quantityStr = (row["Quantity"] || row["quantity"] || "").toString().trim();
+        const priceStr = (row["Price"] || row["price"] || "").toString().trim();
+        const amountStr = (row["Amount"] || row["amount"] || "").toString().trim();
+        const activityDate = (row["Activity Date"] || row["activity date"] || row["ActivityDate"] || "").toString().trim();
 
       // Skip non-trade transactions (Interest, Transfers, Gold fees, etc.)
       // Skip if Trans Code is missing or not a trade type
-      if (!transCode || (transCode !== "BTO" && transCode !== "STC" && transCode !== "STO" && transCode !== "BTC" && 
-          transCode !== "BUY" && transCode !== "SELL")) {
+      // Also skip INT (Interest), DIV (Dividend), etc.
+      if (!transCode || 
+          (transCode !== "BTO" && transCode !== "STC" && transCode !== "STO" && transCode !== "BTC" && 
+           transCode !== "BUY" && transCode !== "SELL") ||
+          transCode === "INT" || transCode === "DIV" || transCode === "FEE") {
         return null;
       }
 
@@ -250,7 +269,11 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
         transaction.strikePrice = descInfo.strikePrice;
       }
       
-      return transaction;
+        return transaction;
+      } catch (error) {
+        console.warn(`Error parsing row ${index + 1}:`, error, row);
+        return null;
+      }
     })
     .filter((t): t is Transaction => t !== null && t.symbol.length > 0);
 
@@ -360,9 +383,10 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
   }
 
   if (trades.length === 0) {
-    throw new Error("No valid trades found in CSV. Please check the file format matches the standard broker export format.");
+    throw new Error("No valid trades found in CSV. Please check the file format matches the standard broker export format. Make sure your CSV has columns: Activity Date, Instrument, Description, Trans Code, Quantity, Price, Amount.");
   }
 
+  console.log(`Successfully parsed ${trades.length} trades from CSV`);
   return trades;
 }
 
