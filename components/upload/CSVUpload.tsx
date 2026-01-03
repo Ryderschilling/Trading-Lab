@@ -53,7 +53,14 @@ export function CSVUpload() {
       headers.some(h => h.toLowerCase() === col.toLowerCase())
     );
     
-    return hasNewFormat || hasOldFormat;
+    // Also check for Robinhood-specific indicators
+    const hasRobinhoodIndicator = headers.some(h => 
+      h.toLowerCase().includes("robinhood") || 
+      h.toLowerCase().includes("activity date") ||
+      h.toLowerCase().includes("trans code")
+    );
+    
+    return hasNewFormat || hasOldFormat || hasRobinhoodIndicator;
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
