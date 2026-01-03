@@ -205,16 +205,33 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
         return null; // Skip rows without ticker
       }
 
+      // Parse numeric values with validation
       const quantity = parseFloat(quantityStr.replace(/,/g, "")) || 0;
       const price = parsePrice(priceStr);
       const amount = parseAmount(amountStr);
+      
+      // Skip if quantity is missing or zero (e.g., Interest Payment rows)
+      if (!quantityStr || quantityStr.trim() === "" || quantity === 0) {
+        return null;
+      }
       
       // Calculate fees from amount difference (Amount = Price * Quantity - Fees)
       const expectedAmount = price * quantity;
       const fees = Math.abs(expectedAmount - Math.abs(amount));
 
-      if (quantity === 0 || (price === 0 && amount === 0)) {
-        return null; // Skip invalid transactions
+      // Skip if both price and amount are zero (invalid transaction)
+      if (price === 0 && amount === 0) {
+        return null;
+      }
+      
+      // If price is zero but amount isn't, calculate price from amount/quantity
+      let finalPrice = price;
+      if (price === 0 && amount !== 0 && quantity > 0) {
+        finalPrice = Math.abs(amount) / quantity;
+      }
+      
+      if (finalPrice === 0) {
+        return null; // Still invalid
       }
 
       // Determine side from Trans Code
@@ -254,7 +271,7 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
         symbol: descInfo.ticker,
         side,
         quantity: Math.abs(quantity),
-        price: Math.abs(price),
+        price: Math.abs(finalPrice),
         fees,
         tradeDate,
         assetType: descInfo.assetType,
