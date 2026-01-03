@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 };
 
 // Force this layout to be used instead of root layout
-export const dynamic = 'force-dynamic';
 
 export default function VisualEditorLayout({
   children,

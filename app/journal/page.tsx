@@ -4,7 +4,6 @@ import { getJournalEntries } from "@/lib/actions/journal";
 import { JournalEntryList } from "@/components/journal/JournalEntryList";
 import { CreateJournalEntry } from "@/components/journal/CreateJournalEntry";
 
-export const dynamic = 'force-dynamic';
 
 export default async function JournalPage() {
   const user = await getCurrentUser();

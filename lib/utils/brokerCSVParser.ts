@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 
-export interface RobinhoodTrade {
+export interface BrokerTrade {
   [key: string]: string; // CSV row as key-value pairs
 }
 
@@ -94,10 +94,10 @@ function parseDescription(description: string): {
 }
 
 /**
- * Maps Robinhood CSV format to our trade format
- * Robinhood exports individual transactions (Buy/Sell), so we match pairs
+ * Maps broker CSV format (standard transaction-based format) to our trade format
+ * Broker exports typically contain individual transactions (Buy/Sell), so we match pairs
  */
-export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
+export function parseBrokerCSV(csvText: string): ParsedTrade[] {
   // Split into lines to check for terms row at the end
   const lines = csvText.split('\n').filter(line => line.trim() !== '');
   
@@ -112,7 +112,7 @@ export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
   
   const cleanedCsv = lines.join('\n');
   
-  const results = Papa.parse<RobinhoodTrade>(cleanedCsv, {
+  const results = Papa.parse<BrokerTrade>(cleanedCsv, {
     header: true,
     skipEmptyLines: true,
   });
@@ -274,7 +274,7 @@ export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
           totalInvested: entryCost.toFixed(2),
           totalReturn: totalReturn.toFixed(2),
           percentReturn: percentReturn.toFixed(2),
-          notes: `Robinhood ${buy.orderType || ""}`.trim() || "Imported from Robinhood",
+          notes: `Broker ${buy.orderType || ""}`.trim() || "Imported from broker CSV",
         });
       } else {
         // No matching buy, treat as standalone sell (partial position or closing)
@@ -297,7 +297,7 @@ export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
           totalInvested: totalInvested.toFixed(2),
           totalReturn: (-fees).toFixed(2), // Loss from fees
           percentReturn: "0",
-          notes: `Robinhood ${trans.orderType || "Sell"} (no matching buy)`.trim() || "Imported from Robinhood",
+          notes: `Broker ${trans.orderType || "Sell"} (no matching buy)`.trim() || "Imported from broker CSV",
         });
       }
     } else {
@@ -331,13 +331,13 @@ export function parseRobinhoodCSV(csvText: string): ParsedTrade[] {
         totalInvested: totalInvested.toFixed(2),
         totalReturn: "0", // Open position
         percentReturn: "0",
-        notes: `Robinhood ${buy.orderType || "Buy"} (open position)`.trim() || "Imported from Robinhood",
+        notes: `Broker ${buy.orderType || "Buy"} (open position)`.trim() || "Imported from broker CSV",
       });
     }
   }
 
   if (trades.length === 0) {
-    throw new Error("No valid trades found in CSV. Please check the file format matches Robinhood export format.");
+    throw new Error("No valid trades found in CSV. Please check the file format matches the standard broker export format.");
   }
 
   return trades;

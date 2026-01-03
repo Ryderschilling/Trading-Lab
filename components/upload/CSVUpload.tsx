@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Papa from "papaparse";
 import { createTrade } from "@/lib/actions/trades";
-import { parseRobinhoodCSV, ParsedTrade } from "@/lib/utils/robinhoodParser";
+import { parseBrokerCSV, ParsedTrade } from "@/lib/utils/brokerCSVParser";
 
 interface CSVRow {
   tradeDate: string;
@@ -33,18 +33,18 @@ export function CSVUpload() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<CSVRow[]>([]);
-  const [csvType, setCsvType] = useState<"robinhood" | "custom">("robinhood");
+  const [csvType, setCsvType] = useState<"broker" | "custom">("broker");
 
-  const isRobinhoodCSV = (headers: string[]): boolean => {
-    // Check for actual Robinhood CSV format columns
-    const robinhoodColumns = [
+  const isBrokerCSV = (headers: string[]): boolean => {
+    // Check for standard broker CSV format columns
+    const brokerColumns = [
       "Activity Date", "Process Date", "Settle Date", "Instrument", 
       "Description", "Trans Code", "Quantity", "Price", "Amount"
     ];
     const oldFormatColumns = ["Symbol", "Side", "Quantity", "Price", "Fees", "Date", "Time"];
     
     // Check if it has the new format columns
-    const hasNewFormat = robinhoodColumns.some(col => 
+    const hasNewFormat = brokerColumns.some(col => 
       headers.some(h => h.toLowerCase() === col.toLowerCase())
     );
     
@@ -53,8 +53,7 @@ export function CSVUpload() {
       headers.some(h => h.toLowerCase() === col.toLowerCase())
     );
     
-    return hasNewFormat || hasOldFormat || 
-           headers.some(h => h.toLowerCase().includes("robinhood"));
+    return hasNewFormat || hasOldFormat;
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,13 +75,13 @@ export function CSVUpload() {
 
         const headers = Object.keys(results.data[0] || {});
         console.log("CSV Headers detected:", headers);
-        const isRobinhood = isRobinhoodCSV(headers);
-        console.log("Is Robinhood CSV:", isRobinhood);
-        setCsvType(isRobinhood ? "robinhood" : "custom");
+        const isBroker = isBrokerCSV(headers);
+        console.log("Is Broker CSV:", isBroker);
+        setCsvType(isBroker ? "broker" : "custom");
 
-        if (isRobinhood) {
+        if (isBroker) {
           try {
-            const parsed = parseRobinhoodCSV(fileText);
+            const parsed = parseBrokerCSV(fileText);
             console.log("Parsed trades:", parsed.length);
             if (parsed.length > 0) {
               setPreview(parsed.slice(0, 5).map(t => ({
@@ -108,7 +107,7 @@ export function CSVUpload() {
             }
           } catch (err) {
             console.error("Parse error:", err);
-            setError(err instanceof Error ? err.message : "Failed to parse Robinhood CSV");
+            setError(err instanceof Error ? err.message : "Failed to parse broker CSV");
           }
         } else {
           // Parse as custom format
@@ -144,14 +143,14 @@ export function CSVUpload() {
       const fileText = await file.text();
       let tradesToUpload: ParsedTrade[] = [];
 
-      if (csvType === "robinhood") {
-        // Parse Robinhood CSV
+      if (csvType === "broker") {
+        // Parse broker CSV
         try {
-          tradesToUpload = parseRobinhoodCSV(fileText);
+          tradesToUpload = parseBrokerCSV(fileText);
         } catch (parseError) {
-          const errorMessage = parseError instanceof Error ? parseError.message : "Failed to parse Robinhood CSV";
+          const errorMessage = parseError instanceof Error ? parseError.message : "Failed to parse broker CSV";
           console.error("CSV Parse Error:", parseError);
-          setError(`CSV Parsing Error: ${errorMessage}. Please ensure your CSV file is a valid Robinhood export.`);
+          setError(`CSV Parsing Error: ${errorMessage}. Please ensure your CSV file is a valid broker export.`);
           setLoading(false);
           return;
         }
@@ -294,7 +293,7 @@ export function CSVUpload() {
       <CardHeader>
         <CardTitle>CSV Upload</CardTitle>
         <CardDescription>
-          Upload your trades via CSV file. Supports Robinhood CSV exports or custom format.
+          Upload your trades via CSV file. Supports standard broker CSV exports or custom format.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -323,9 +322,9 @@ export function CSVUpload() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Preview (first 5 rows)</h3>
-                {csvType === "robinhood" && (
+                {csvType === "broker" && (
                   <span className="text-xs bg-neon-green/20 text-neon-green px-2 py-1 rounded">
-                    ✓ Robinhood Format Detected
+                    ✓ Broker Format Detected
                   </span>
                 )}
               </div>
