@@ -24,22 +24,32 @@ export interface ParsedTrade {
 
 /**
  * Parse amount string with $ and parentheses (e.g., "$152.93" or "($126.04)")
+ * Handles: "$600.98", "($600.98)", "$1,234.56", "($1,234.56)"
  */
 function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
-  const cleaned = amountStr.replace(/,/g, "").replace(/\$/g, "").trim();
+  // Remove commas and dollar signs
+  let cleaned = amountStr.replace(/,/g, "").replace(/\$/g, "").trim();
+  
+  // Check for negative values in parentheses
   if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
-    return -parseFloat(cleaned.slice(1, -1)) || 0;
+    cleaned = cleaned.slice(1, -1); // Remove parentheses
+    const value = parseFloat(cleaned) || 0;
+    return -Math.abs(value); // Ensure negative
   }
+  
   return parseFloat(cleaned) || 0;
 }
 
 /**
- * Parse price string with $ (e.g., "$0.51")
+ * Parse price string with $ (e.g., "$0.51" or "$1,234.56")
+ * Handles dollar signs and commas
  */
 function parsePrice(priceStr: string): number {
   if (!priceStr) return 0;
-  return parseFloat(priceStr.replace(/,/g, "").replace(/\$/g, "").trim()) || 0;
+  // Remove commas and dollar signs, then parse
+  const cleaned = priceStr.replace(/,/g, "").replace(/\$/g, "").trim();
+  return parseFloat(cleaned) || 0;
 }
 
 /**
@@ -143,7 +153,7 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
 
   const transactions: Transaction[] = results.data
     .map((row) => {
-      // Get columns - handle both quoted and unquoted headers
+      // Get columns - handle case sensitivity (Instrument with capital I)
       const instrument = (row["Instrument"] || row["instrument"] || "").toString().trim();
       const description = (row["Description"] || row["description"] || "").toString().trim();
       const transCode = (row["Trans Code"] || row["trans code"] || row["TransCode"] || "").toString().trim().toUpperCase();
@@ -152,9 +162,16 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
       const amountStr = (row["Amount"] || row["amount"] || "").toString().trim();
       const activityDate = (row["Activity Date"] || row["activity date"] || row["ActivityDate"] || "").toString().trim();
 
-      // Skip non-trade transactions (Interest, Transfers, etc.)
+      // Skip non-trade transactions (Interest, Transfers, Gold fees, etc.)
+      // Skip if Trans Code is missing or not a trade type
       if (!transCode || (transCode !== "BTO" && transCode !== "STC" && transCode !== "STO" && transCode !== "BTC" && 
           transCode !== "BUY" && transCode !== "SELL")) {
+        return null;
+      }
+
+      // Skip rows with empty Instrument (like "Gold Subscription Fee", "Interest Payment", etc.)
+      // These are not trades and will cause errors
+      if (!instrument || instrument.trim() === "") {
         return null;
       }
 
@@ -164,7 +181,8 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
         descInfo.ticker = instrument.toUpperCase();
       }
       
-      if (!descInfo.ticker) {
+      // Final check: must have a ticker to proceed
+      if (!descInfo.ticker || descInfo.ticker.trim() === "") {
         return null; // Skip rows without ticker
       }
 
@@ -184,27 +202,32 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
       // BTO (Buy to Open) and BTC (Buy to Close) = Buy
       // STC (Sell to Close) and STO (Sell to Open) = Sell
       const isBuy = transCode === "BTO" || transCode === "BTC" || transCode === "BUY";
-      const side = isBuy ? "buy" : "sell";
+      const isSell = transCode === "STC" || transCode === "STO" || transCode === "SELL";
+      const side = isBuy ? "buy" : (isSell ? "sell" : "buy"); // Default to buy if unknown
 
-      // Parse date (MM/DD/YYYY format)
+      // Parse date (MM/DD/YYYY format) and convert to YYYY-MM-DD
       let tradeDate = activityDate;
       if (tradeDate && !tradeDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Try MM/DD/YYYY format first (Robinhood standard)
         const parts = tradeDate.split("/");
         if (parts.length === 3) {
+          const month = parts[0].padStart(2, "0");
+          const day = parts[1].padStart(2, "0");
           const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-          tradeDate = `${year}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+          tradeDate = `${year}-${month}-${day}`;
         } else {
           // Try parsing as Date object
           const parsed = new Date(tradeDate);
           if (!isNaN(parsed.getTime())) {
             tradeDate = parsed.toISOString().split("T")[0];
           } else {
+            // Fallback to today if can't parse
             tradeDate = new Date().toISOString().split("T")[0];
           }
         }
       }
 
-      if (!tradeDate) {
+      if (!tradeDate || !tradeDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         tradeDate = new Date().toISOString().split("T")[0];
       }
 
