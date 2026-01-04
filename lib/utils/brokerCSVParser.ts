@@ -181,10 +181,11 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
       // Skip non-trade transactions (Interest, Transfers, Gold fees, etc.)
       // Skip if Trans Code is missing or not a trade type
       // Also skip INT (Interest), DIV (Dividend), etc.
+      const validTradeCodes = ["BTO", "STC", "STO", "BTC", "BUY", "SELL"];
+      const invalidCodes = ["INT", "DIV", "FEE"];
+      
       if (!transCode || 
-          (transCode !== "BTO" && transCode !== "STC" && transCode !== "STO" && transCode !== "BTC" && 
-           transCode !== "BUY" && transCode !== "SELL") ||
-          transCode === "INT" || transCode === "DIV" || transCode === "FEE") {
+          (!validTradeCodes.includes(transCode) || invalidCodes.includes(transCode))) {
         return null;
       }
 
