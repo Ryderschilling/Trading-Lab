@@ -55,11 +55,12 @@ export function AIAssistant() {
         { role: "assistant", content: response, timestamp: new Date() },
       ]);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "I'm sorry, I encountered an error. Please try again.";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "I'm sorry, I encountered an error. Please try again.",
+          content: errorMessage,
           timestamp: new Date(),
         },
       ]);

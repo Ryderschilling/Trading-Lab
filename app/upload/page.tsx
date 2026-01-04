@@ -11,7 +11,7 @@ export default async function UploadPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Upload Trades</h1>
+      <h1 className="text-3xl font-bold">Upload</h1>
 
       <Tabs defaultValue="manual" className="space-y-6">
         <TabsList>

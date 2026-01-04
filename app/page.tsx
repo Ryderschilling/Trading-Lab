@@ -25,14 +25,6 @@ export default function Home() {
             <SignInButton mode="modal">
               <Button>Sign In</Button>
             </SignInButton>
-            <div className="mt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => router.push("/dashboard")}
-              >
-                Continue as Guest (Demo Mode)
-              </Button>
-            </div>
           </SignedOut>
           <SignedIn>
             <p>Redirecting to dashboard...</p>

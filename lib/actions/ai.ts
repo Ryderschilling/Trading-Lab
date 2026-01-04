@@ -11,9 +11,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const MAX_QUESTION_LENGTH = 1000; // Maximum characters in user question
+const MAX_TOKENS = 4000; // Maximum tokens for OpenAI response
+
 export async function askAI(question: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+
+  // Validate input length
+  if (!question || question.trim().length === 0) {
+    throw new Error("Please enter a question.");
+  }
+
+  if (question.length > MAX_QUESTION_LENGTH) {
+    throw new Error(`Question is too long. Please keep it under ${MAX_QUESTION_LENGTH} characters.`);
+  }
 
   // Get user data
   const [stats, goals, journalEntries, dailyPerf] = await Promise.all([
@@ -76,9 +88,15 @@ Please provide a helpful, personalized response based on the user's trading data
         },
       ],
       temperature: 0.7,
+      max_tokens: MAX_TOKENS,
     });
 
     const response = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+
+    // Validate response length
+    if (!response || response.trim().length === 0) {
+      throw new Error("The AI assistant couldn't generate a response. Please try again.");
+    }
 
     // Save assistant response
     await prisma.aIConversationHistory.create({
@@ -92,7 +110,26 @@ Please provide a helpful, personalized response based on the user's trading data
     return response;
   } catch (error) {
     console.error("OpenAI API error:", error);
-    throw new Error("Failed to get AI response");
+    
+    // Provide user-friendly error messages
+    if (error instanceof Error) {
+      // Check for specific OpenAI API errors
+      if (error.message.includes("rate limit")) {
+        throw new Error("Too many requests. Please wait a moment and try again.");
+      }
+      if (error.message.includes("insufficient_quota")) {
+        throw new Error("AI service is temporarily unavailable. Please try again later.");
+      }
+      if (error.message.includes("invalid_api_key")) {
+        throw new Error("AI service configuration error. Please contact support.");
+      }
+      // Re-throw user-friendly errors
+      if (error.message.includes("Please enter") || error.message.includes("too long") || error.message.includes("couldn't generate")) {
+        throw error;
+      }
+    }
+    
+    throw new Error("Failed to get AI response. Please try again or contact support if the problem persists.");
   }
 }
 

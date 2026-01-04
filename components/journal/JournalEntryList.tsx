@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import Link from "next/link";
+import { CreateJournalEntry } from "./CreateJournalEntry";
 
 interface JournalEntry {
   id: string;
@@ -23,10 +24,13 @@ export function JournalEntryList({ entries }: JournalEntryListProps) {
   if (entries.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
+        <CardContent className="py-12 text-center space-y-4">
           <p className="text-muted-foreground">
             No journal entries yet. Create your first entry to start tracking your trading journey!
           </p>
+          <div className="flex justify-center">
+            <CreateJournalEntry />
+          </div>
         </CardContent>
       </Card>
     );

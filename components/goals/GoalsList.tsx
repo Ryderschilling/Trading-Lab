@@ -22,10 +22,13 @@ export function GoalsList({ goals }: GoalsListProps) {
   if (goals.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
+        <CardContent className="py-12 text-center space-y-4">
           <p className="text-muted-foreground">
             No goals set yet. Create your first trading goal to get started!
           </p>
+          <div className="flex justify-center">
+            <CreateGoalButton />
+          </div>
         </CardContent>
       </Card>
     );
