@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency, formatPercent, formatNumber, cn } from "@/lib/utils";
+import { CreateGoalButton } from "./CreateGoalButton";
 
 interface Goal {
   id: string;
