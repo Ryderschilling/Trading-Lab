@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { CalendarView } from "@/components/calendar/CalendarView";
 
+export const dynamic = 'force-dynamic';
 
 interface CalendarPageProps {
   searchParams: {
