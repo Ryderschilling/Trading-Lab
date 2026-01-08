@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,11 +24,32 @@ export function ProfileForm({ user, clerkUser }: ProfileFormProps) {
   const { user: clerkUserClient, isLoaded } = useUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState(clerkUser?.firstName || "");
   const [bio, setBio] = useState(""); // You'd need to add this to your User model if you want to store it
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   async function handleUpdateProfile() {
-    if (!isLoaded || !clerkUserClient) return;
+    if (!isLoaded) {
+      toast({
+        title: "Loading",
+        description: "Please wait while we load your profile...",
+        variant: "default",
+      });
+      return;
+    }
+
+    if (!clerkUserClient) {
+      toast({
+        title: "Error",
+        description: "Unable to load your profile. Please try logging out and back in.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -54,7 +75,23 @@ export function ProfileForm({ user, clerkUser }: ProfileFormProps) {
   }
 
   async function handleUpdatePassword() {
-    if (!isLoaded || !clerkUserClient) return;
+    if (!isLoaded) {
+      toast({
+        title: "Loading",
+        description: "Please wait while we load your profile...",
+        variant: "default",
+      });
+      return;
+    }
+
+    if (!clerkUserClient) {
+      toast({
+        title: "Error",
+        description: "Unable to load your profile. Please try logging out and back in.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -72,8 +109,41 @@ export function ProfileForm({ user, clerkUser }: ProfileFormProps) {
     }
   }
 
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Loading profile...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Loading profile...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!clerkUserClient) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-4">Unable to load your profile.</p>
+            <Button onClick={() => window.location.href = "/"}>Return to Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

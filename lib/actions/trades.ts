@@ -688,3 +688,28 @@ export async function deleteTrade(id: string) {
   return { success: true };
 }
 
+export async function deleteAllTrades() {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  if (!process.env.DATABASE_URL) {
+    throw new Error("Database not configured");
+  }
+
+  // Delete all trades for the user (cascade will delete option metadata)
+  const result = await prisma.trade.deleteMany({
+    where: { userId: user.id },
+  });
+
+  // Recalculate stats (will reset to empty)
+  await recalculateStats(user.id);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  revalidatePath("/analytics");
+  revalidatePath("/goals");
+  revalidatePath("/trades");
+
+  return { success: true, count: result.count };
+}
+

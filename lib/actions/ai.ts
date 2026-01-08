@@ -7,84 +7,140 @@ import { getStats, getDailyPerformance } from "./trades";
 import { getGoals } from "./goals";
 import { getJournalEntries } from "./journal";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const MAX_QUESTION_LENGTH = 1000; // Maximum characters in user question
 const MAX_TOKENS = 4000; // Maximum tokens for OpenAI response
+
+// Sanitize user input to prevent injection attacks
+function sanitizeInput(input: string): string {
+  // Remove potentially dangerous characters and limit length
+  return input
+    .trim()
+    .slice(0, MAX_QUESTION_LENGTH)
+    .replace(/[<>]/g, "") // Remove HTML tags
+    .replace(/javascript:/gi, "") // Remove javascript: protocol
+    .replace(/on\w+=/gi, ""); // Remove event handlers
+}
+
+// Get OpenAI client with validation
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("AI service is not configured. Please contact support.");
+  }
+  return new OpenAI({ apiKey });
+}
 
 export async function askAI(question: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  // Validate input length
-  if (!question || question.trim().length === 0) {
+  // Validate environment variable
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("AI service is not configured. Please contact support.");
+  }
+
+  // Sanitize and validate input
+  const sanitizedQuestion = sanitizeInput(question);
+  
+  if (!sanitizedQuestion || sanitizedQuestion.trim().length === 0) {
     throw new Error("Please enter a question.");
   }
 
-  if (question.length > MAX_QUESTION_LENGTH) {
+  if (sanitizedQuestion.length > MAX_QUESTION_LENGTH) {
     throw new Error(`Question is too long. Please keep it under ${MAX_QUESTION_LENGTH} characters.`);
   }
 
-  // Get user data
-  const [stats, goals, journalEntries, dailyPerf] = await Promise.all([
-    getStats(),
-    getGoals(),
-    getJournalEntries(),
-    getDailyPerformance(),
-  ]);
+  // Get user data with error handling
+  let stats, goals, journalEntries, dailyPerf;
+  try {
+    [stats, goals, journalEntries, dailyPerf] = await Promise.all([
+      getStats(),
+      getGoals(),
+      getJournalEntries(),
+      getDailyPerformance(),
+    ]);
+  } catch (error) {
+    console.error("Error fetching user data for AI:", error);
+    throw new Error("Failed to load your trading data. Please try again.");
+  }
 
-  // Build context
+  // Build context (sanitize sensitive data)
   const context = {
     stats: stats || {},
-    goals: goals.map(g => ({
-      name: g.name,
-      type: g.type,
-      targetValue: g.targetValue,
-      currentValue: g.currentValue,
-      status: g.status,
+    goals: (goals || []).map(g => ({
+      name: g.name || "",
+      type: g.type || "",
+      targetValue: g.targetValue || 0,
+      currentValue: g.currentValue || 0,
+      status: g.status || "",
     })),
-    journalEntries: journalEntries.slice(0, 10).map(j => ({
-      date: j.date,
-      whatWentWell: j.whatWentWell,
-      whatWentWrong: j.whatWentWrong,
-      lessonsLearned: j.lessonsLearned,
+    journalEntries: (journalEntries || []).slice(0, 10).map(j => ({
+      date: j.date || null,
+      whatWentWell: (j.whatWentWell || "").slice(0, 500),
+      whatWentWrong: (j.whatWentWrong || "").slice(0, 500),
+      lessonsLearned: (j.lessonsLearned || "").slice(0, 500),
     })),
-    recentPerformance: dailyPerf.slice(-30),
+    recentPerformance: (dailyPerf || []).slice(-30),
   };
 
-  // Save user message
-  await prisma.aIConversationHistory.create({
-    data: {
-      userId: user.id,
-      role: "user",
-      content: question,
-    },
-  });
+  // Save user message (sanitized)
+  try {
+    await prisma.aIConversationHistory.create({
+      data: {
+        userId: user.id,
+        role: "user",
+        content: sanitizedQuestion,
+      },
+    });
+  } catch (error) {
+    console.error("Error saving user message:", error);
+    // Continue even if saving fails
+  }
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert trading coach AI assistant. You have access to the user's trading data including:
+    const openai = getOpenAIClient();
+    
+    const systemPrompt = `You are an educational trading analysis assistant. You provide educational insights and analysis based on trading data, but you MUST NOT:
+
+1. Provide specific buy/sell recommendations or trade instructions
+2. Give financial advice or investment recommendations
+3. Suggest specific stocks, options, or securities to trade
+4. Make predictions about market movements or price targets
+5. Recommend specific entry/exit prices or timing
+
+You CAN:
+- Analyze trading patterns and performance metrics
+- Provide educational insights about trading strategies
+- Help identify strengths and weaknesses in trading approach
+- Suggest general areas for improvement
+- Explain trading concepts and terminology
+- Review journal entries and provide feedback on trading psychology
+
+Always include a disclaimer: "This is educational analysis only and not financial advice. Always do your own research and consult with a licensed financial advisor before making trading decisions."
+
+You have access to the user's trading data including:
 - Trading statistics (P&L, win rate, profit factor, etc.)
 - Trading goals and their progress
 - Recent journal entries
 - Daily performance data
 
-Provide personalized, data-driven feedback and insights based on the user's actual trading data. Be specific, actionable, and encouraging. Use the context data to give concrete examples and recommendations.`,
+Provide personalized, data-driven educational feedback and insights based on the user's actual trading data. Be specific, actionable, and encouraging. Use the context data to give concrete examples and educational recommendations.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
         },
         {
           role: "user",
           content: `Context Data:
 ${JSON.stringify(context, null, 2)}
 
-User Question: ${question}
+User Question: ${sanitizedQuestion}
 
-Please provide a helpful, personalized response based on the user's trading data.`,
+Please provide a helpful, educational response based on the user's trading data. Remember: provide analysis and insights only, not specific trade recommendations.`,
         },
       ],
       temperature: 0.7,
@@ -98,16 +154,24 @@ Please provide a helpful, personalized response based on the user's trading data
       throw new Error("The AI assistant couldn't generate a response. Please try again.");
     }
 
-    // Save assistant response
-    await prisma.aIConversationHistory.create({
-      data: {
-        userId: user.id,
-        role: "assistant",
-        content: response,
-      },
-    });
+    // Sanitize response before saving
+    const sanitizedResponse = response.slice(0, 10000); // Limit response length
 
-    return response;
+    // Save assistant response
+    try {
+      await prisma.aIConversationHistory.create({
+        data: {
+          userId: user.id,
+          role: "assistant",
+          content: sanitizedResponse,
+        },
+      });
+    } catch (error) {
+      console.error("Error saving assistant response:", error);
+      // Continue even if saving fails
+    }
+
+    return sanitizedResponse;
   } catch (error) {
     console.error("OpenAI API error:", error);
     

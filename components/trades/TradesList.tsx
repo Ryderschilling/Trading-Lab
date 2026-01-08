@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { format } from "date-fns";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { deleteAllTrades } from "@/lib/actions/trades";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Trade {
   id: string;
@@ -31,12 +33,50 @@ interface TradesListProps {
 
 export function TradesList({ trades }: TradesListProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [assetTypeFilter, setAssetTypeFilter] = useState<string>("all");
   const [profitFilter, setProfitFilter] = useState<string>("all");
   const [strategyFilter, setStrategyFilter] = useState<string>("all");
   const [dateRangeStart, setDateRangeStart] = useState("");
   const [dateRangeEnd, setDateRangeEnd] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteAll() {
+    if (!confirm("⚠️ WARNING: Are you sure you want to delete ALL trades?\n\nThis action cannot be undone and will permanently delete all your trading data, including:\n- All trade records\n- All associated statistics\n- All performance data\n\nThis cannot be reversed. Are you absolutely sure?")) {
+      return;
+    }
+
+    // Double confirmation with typed confirmation
+    const confirmation = prompt("⚠️ FINAL CONFIRMATION\n\nType 'DELETE ALL TRADES' (exactly as shown) to confirm deletion:");
+    if (confirmation !== "DELETE ALL TRADES") {
+      toast({
+        title: "Cancelled",
+        description: "Deletion cancelled. Your trades are safe.",
+        variant: "default",
+      });
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const result = await deleteAllTrades();
+      toast({
+        title: "Trades Deleted",
+        description: `Successfully deleted ${result.count} trade${result.count !== 1 ? 's' : ''}.`,
+        variant: "success",
+      });
+      router.refresh();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete trades",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const filteredTrades = useMemo(() => {
     return trades.filter((trade) => {
@@ -97,6 +137,21 @@ export function TradesList({ trades }: TradesListProps) {
 
   return (
     <div className="space-y-4">
+      {/* Header with Delete All button */}
+      {trades.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            variant="destructive"
+            onClick={handleDeleteAll}
+            disabled={deleting}
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            {deleting ? "Deleting..." : "Delete All Trades"}
+          </Button>
+        </div>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
