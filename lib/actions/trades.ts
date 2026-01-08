@@ -489,3 +489,202 @@ export async function getDailyPerformance(startDate?: Date, endDate?: Date) {
   }
 }
 
+export async function getTradeById(id: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return null;
+
+    if (!process.env.DATABASE_URL) {
+      return null;
+    }
+
+    const trade = await prisma.trade.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
+      include: {
+        optionMetadata: true,
+      },
+    });
+
+    return trade;
+  } catch (error) {
+    console.error("Error getting trade:", error);
+    return null;
+  }
+}
+
+export async function updateTrade(id: string, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // Verify trade belongs to user
+  const existingTrade = await prisma.trade.findFirst({
+    where: { id, userId: user.id },
+  });
+
+  if (!existingTrade) {
+    throw new Error("Trade not found");
+  }
+
+  // Get and validate required fields
+  const tradeDateStr = formData.get("tradeDate") as string;
+  if (!tradeDateStr) {
+    throw new Error("Trade date is required");
+  }
+  
+  const tradeDate = new Date(tradeDateStr);
+  if (isNaN(tradeDate.getTime())) {
+    throw new Error(`Invalid trade date: ${tradeDateStr}`);
+  }
+
+  const ticker = (formData.get("ticker") as string)?.trim();
+  if (!ticker) {
+    throw new Error("Ticker is required");
+  }
+
+  const assetType = (formData.get("assetType") as string) || "Stock";
+  const entryPriceStr = formData.get("entryPrice") as string;
+  const entryPrice = parseFloat(entryPriceStr);
+  if (isNaN(entryPrice)) {
+    throw new Error(`Invalid entry price: ${entryPriceStr}`);
+  }
+
+  const quantityStr = formData.get("quantity") as string;
+  const quantity = parseInt(quantityStr);
+  if (isNaN(quantity) || quantity <= 0) {
+    throw new Error(`Invalid quantity: ${quantityStr}`);
+  }
+
+  const totalInvestedStr = formData.get("totalInvested") as string;
+  const totalInvested = parseFloat(totalInvestedStr);
+  if (isNaN(totalInvested)) {
+    throw new Error(`Invalid total invested: ${totalInvestedStr}`);
+  }
+
+  const totalReturnStr = formData.get("totalReturn") as string;
+  const totalReturn = parseFloat(totalReturnStr);
+  if (isNaN(totalReturn)) {
+    throw new Error(`Invalid total return: ${totalReturnStr}`);
+  }
+
+  const tradeTime = formData.get("tradeTime") as string | null;
+  const exitPrice = formData.get("exitPrice") ? parseFloat(formData.get("exitPrice") as string) : null;
+  const contracts = formData.get("contracts") ? parseInt(formData.get("contracts") as string) : null;
+  const percentReturnStr = formData.get("percentReturn") as string;
+  const percentReturn = percentReturnStr ? parseFloat(percentReturnStr) : (totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0);
+  const strategyTag = formData.get("strategyTag") as string | null;
+  const notes = formData.get("notes") as string | null;
+  
+  let expirationDate: Date | null = null;
+  const expirationDateStr = formData.get("expirationDate") as string;
+  if (expirationDateStr) {
+    expirationDate = new Date(expirationDateStr);
+    if (isNaN(expirationDate.getTime())) {
+      expirationDate = null;
+    }
+  }
+  
+  const strikePriceStr = formData.get("strikePrice") as string;
+  const strikePrice = strikePriceStr ? parseFloat(strikePriceStr) : null;
+
+  // Combine date and time if time is provided
+  let finalDate = tradeDate;
+  if (tradeTime) {
+    const [hours, minutes] = tradeTime.split(":");
+    finalDate = new Date(tradeDate);
+    finalDate.setHours(parseInt(hours), parseInt(minutes));
+  }
+
+  // Update trade
+  const trade = await prisma.trade.update({
+    where: { id },
+    data: {
+      tradeDate: finalDate,
+      tradeTime: tradeTime || null,
+      ticker: ticker.toUpperCase(),
+      assetType,
+      entryPrice,
+      exitPrice,
+      quantity,
+      contracts,
+      totalInvested,
+      totalReturn,
+      percentReturn,
+      strategyTag: strategyTag || null,
+      notes: notes || null,
+    },
+  });
+
+  // Update option metadata if needed
+  if (assetType !== "Stock" && expirationDate && strikePrice) {
+    await prisma.optionMetadata.upsert({
+      where: { tradeId: id },
+      update: {
+        expirationDate,
+        strikePrice,
+        is0DTE: expirationDate && new Date(expirationDate.getTime() - tradeDate.getTime()).getDate() === 0,
+        timeOfDay: getTimeOfDay(tradeTime),
+        dayOfWeek: getDayOfWeek(finalDate),
+      },
+      create: {
+        tradeId: id,
+        expirationDate,
+        strikePrice,
+        is0DTE: expirationDate && new Date(expirationDate.getTime() - tradeDate.getTime()).getDate() === 0,
+        timeOfDay: getTimeOfDay(tradeTime),
+        dayOfWeek: getDayOfWeek(finalDate),
+      },
+    });
+  } else if (assetType === "Stock") {
+    // Delete option metadata if switching to stock
+    await prisma.optionMetadata.deleteMany({
+      where: { tradeId: id },
+    });
+  }
+
+  // Recalculate stats
+  await recalculateStats(user.id, finalDate);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  revalidatePath("/analytics");
+  revalidatePath("/goals");
+  revalidatePath("/trades");
+
+  return trade;
+}
+
+export async function deleteTrade(id: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // Verify trade belongs to user
+  const existingTrade = await prisma.trade.findFirst({
+    where: { id, userId: user.id },
+  });
+
+  if (!existingTrade) {
+    throw new Error("Trade not found");
+  }
+
+  const tradeDate = existingTrade.tradeDate;
+
+  // Delete trade (cascade will delete option metadata)
+  await prisma.trade.delete({
+    where: { id },
+  });
+
+  // Recalculate stats
+  await recalculateStats(user.id, tradeDate);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  revalidatePath("/analytics");
+  revalidatePath("/goals");
+  revalidatePath("/trades");
+
+  return { success: true };
+}
+

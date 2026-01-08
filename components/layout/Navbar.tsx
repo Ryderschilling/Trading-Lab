@@ -1,45 +1,61 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { Search, Bell, MessageCircle, User, Palette } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, MessageCircle, User, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import Link from "next/link";
 
 export function Navbar() {
   const { user } = useUser();
+  const router = useRouter();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
     <header className="border-b border-border bg-card px-6 py-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4 flex-1">
-          <h1 className="text-2xl font-bold">Trading Lab</h1>
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Start Search Here..."
-              className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+        <div className="flex items-center space-x-4">
+          <Link href="/dashboard" className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center neon-glow-green">
+              <Zap className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold">Trading Lab</h1>
+          </Link>
         </div>
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => window.open("/visual-editor", "_blank", "width=1400,height=900")}
-            title="Open Visual Editor"
+            onClick={() => router.push("/assistant")}
+            title="AI Assistant"
           >
-            <Palette className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
             <MessageCircle className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <Bell className="w-5 h-5" />
-          </Button>
-          {user && (
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <User className="w-5 h-5" />
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              title="Notifications"
+            >
+              <Bell className="w-5 h-5" />
             </Button>
+            {notificationsOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-lg shadow-lg z-50">
+                <div className="p-4">
+                  <h3 className="font-semibold mb-2">Notifications</h3>
+                  <p className="text-sm text-muted-foreground">No new notifications</p>
+                </div>
+              </div>
+            )}
+          </div>
+          {user && (
+            <Link href="/profile">
+              <Button variant="ghost" size="icon" className="rounded-full" title="Profile">
+                <User className="w-5 h-5" />
+              </Button>
+            </Link>
           )}
         </div>
       </div>

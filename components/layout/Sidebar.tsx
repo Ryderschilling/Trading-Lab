@@ -14,8 +14,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { List } from "lucide-react";
+
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Trades", href: "/trades", icon: List },
   { name: "Upload Trades", href: "/upload", icon: Upload },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Goals", href: "/goals", icon: Target },
