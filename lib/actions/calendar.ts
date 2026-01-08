@@ -5,7 +5,18 @@ import { prisma } from "@/lib/prisma";
 
 export async function getCalendarData(year: number, month: number) {
   const user = await getCurrentUser();
-  if (!user) return { days: [], monthlyStats: null };
+  if (!user) {
+    return {
+      days: [],
+      monthlyStats: null,
+      streaks: {
+        currentWinStreak: 0,
+        currentLossStreak: 0,
+        maxWinStreak: 0,
+        maxLossStreak: 0,
+      },
+    };
+  }
 
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0, 23, 59, 59, 999);

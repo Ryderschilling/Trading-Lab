@@ -22,6 +22,18 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   const calendarData = await getCalendarData(year, month);
 
-  return <CalendarView year={year} month={month} calendarData={calendarData} />;
+  // Ensure calendarData has all required fields
+  const normalizedCalendarData = {
+    days: calendarData.days || [],
+    monthlyStats: calendarData.monthlyStats || null,
+    streaks: calendarData.streaks || {
+      currentWinStreak: 0,
+      currentLossStreak: 0,
+      maxWinStreak: 0,
+      maxLossStreak: 0,
+    },
+  };
+
+  return <CalendarView year={year} month={month} calendarData={normalizedCalendarData} />;
 }
 
