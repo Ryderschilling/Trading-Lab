@@ -236,11 +236,20 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
       }
 
       // Determine side from Trans Code
-      // BTO (Buy to Open) and BTC (Buy to Close) = Buy
-      // STC (Sell to Close) and STO (Sell to Open) = Sell
+      // BTO (Buy to Open) = Buy (opening a position)
+      // BTC (Buy to Close) = Buy (closing a short position)
+      // STC (Sell to Close) = Sell (closing a long position)
+      // STO (Sell to Open) = Sell (opening a short position)
+      // BUY = Buy
+      // SELL = Sell
       const isBuy = transCode === "BTO" || transCode === "BTC" || transCode === "BUY";
       const isSell = transCode === "STC" || transCode === "STO" || transCode === "SELL";
-      const side = isBuy ? "buy" : (isSell ? "sell" : "buy"); // Default to buy if unknown
+      const side = isBuy ? "buy" : (isSell ? "sell" : null);
+      
+      // Skip if we can't determine the side
+      if (!side) {
+        return null;
+      }
 
       // Parse date (MM/DD/YYYY format) and convert to YYYY-MM-DD
       let tradeDate = activityDate;
@@ -295,109 +304,134 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
     })
     .filter((t): t is Transaction => t !== null && t.symbol.length > 0);
 
-  // Match buy/sell pairs to create complete trades
-  const trades: ParsedTrade[] = [];
-  const pendingBuys = new Map<string, Transaction[]>();
+  // Track positions by position key (symbol, asset type, strike, expiration)
+  // Only create trades when positions are fully closed
+  interface Position {
+    symbol: string;
+    assetType: string;
+    strikePrice?: string;
+    expirationDate?: string;
+    quantity: number; // Current open quantity (positive = long, negative = short)
+    totalCost: number; // Total cost basis (sum of all buys)
+    totalProceeds: number; // Total sell proceeds (sum of all sells)
+    firstBuyDate: string; // Date of first buy
+    lastActivityDate: string; // Date of last activity
+  }
+
+  const positions = new Map<string, Position>();
 
   for (const trans of transactions) {
-    const key = `${trans.symbol}-${trans.expirationDate || ""}-${trans.strikePrice || ""}`;
-    
-    const isBuy = trans.side.includes("buy") || trans.side === "b" || trans.side.includes("purchase") || trans.side === "debit";
-    const isSell = trans.side.includes("sell") || trans.side === "s" || trans.side.includes("close") || trans.side === "credit";
-    
-    if (isBuy) {
-      // Add to pending buys
-      if (!pendingBuys.has(key)) {
-        pendingBuys.set(key, []);
-      }
-      pendingBuys.get(key)!.push(trans);
-    } else if (isSell) {
-      // Try to match with a buy
-      const buys = pendingBuys.get(key) || [];
-      if (buys.length > 0) {
-        const buy = buys.shift()!;
-        
-        // Create complete trade
-        const qty = Math.min(buy.quantity, trans.quantity);
-        const entryCost = buy.price * qty + buy.fees;
-        const exitValue = trans.price * qty - trans.fees;
-        const totalReturn = exitValue - entryCost;
-        const percentReturn = entryCost > 0 ? (totalReturn / entryCost) * 100 : 0;
+    // Create position key: symbol-assetType-strike-expiration
+    // For stocks: "AAPL-Stock"
+    // For options: "AAPL-Call-150-2025-12-31" or "AAPL-Put-150-2025-12-31"
+    const assetTypeKey = trans.assetType; // "Stock", "Call", or "Put" - treat PUTS same as CALLS for position tracking
+    const positionKey = trans.assetType === "Stock" 
+      ? `${trans.symbol}-${assetTypeKey}`
+      : `${trans.symbol}-${assetTypeKey}-${trans.strikePrice || ""}-${trans.expirationDate || ""}`;
 
-        trades.push({
-          tradeDate: buy.tradeDate,
-          tradeTime: buy.tradeTime,
-          ticker: buy.symbol,
-          assetType: buy.assetType,
-          expirationDate: buy.expirationDate,
-          strikePrice: buy.strikePrice,
-          entryPrice: buy.price.toFixed(4),
-          exitPrice: trans.price.toFixed(4),
-          quantity: qty.toFixed(0),
-          contracts: buy.assetType !== "Stock" ? qty.toFixed(0) : undefined,
-          totalInvested: entryCost.toFixed(2),
-          totalReturn: totalReturn.toFixed(2),
-          percentReturn: percentReturn.toFixed(2),
-          notes: `Broker ${buy.orderType || ""}`.trim() || "Imported from broker CSV",
-        });
-      } else {
-        // No matching buy, treat as standalone sell (partial position or closing)
-        const qty = trans.quantity;
-        const price = trans.price;
-        const fees = trans.fees;
-        const totalInvested = qty * price + fees;
-        
-        trades.push({
-          tradeDate: trans.tradeDate,
-          tradeTime: trans.tradeTime,
-          ticker: trans.symbol,
-          assetType: trans.assetType,
-          expirationDate: trans.expirationDate,
-          strikePrice: trans.strikePrice,
-          entryPrice: "0",
-          exitPrice: price.toFixed(4),
-          quantity: qty.toFixed(0),
-          contracts: trans.assetType !== "Stock" ? qty.toFixed(0) : undefined,
-          totalInvested: totalInvested.toFixed(2),
-          totalReturn: (-fees).toFixed(2), // Loss from fees
-          percentReturn: "0",
-          notes: `Broker ${trans.orderType || "Sell"} (no matching buy)`.trim() || "Imported from broker CSV",
-        });
-      }
-    } else {
-      // Unknown side, treat as buy
-      if (!pendingBuys.has(key)) {
-        pendingBuys.set(key, []);
-      }
-      pendingBuys.get(key)!.push(trans);
+    if (!positions.has(positionKey)) {
+      positions.set(positionKey, {
+        symbol: trans.symbol,
+        assetType: trans.assetType,
+        strikePrice: trans.strikePrice,
+        expirationDate: trans.expirationDate,
+        quantity: 0,
+        totalCost: 0,
+        totalProceeds: 0,
+        firstBuyDate: trans.tradeDate,
+        lastActivityDate: trans.tradeDate,
+      });
+    }
+
+    const position = positions.get(positionKey)!;
+
+    // Calculate cost/proceeds - for options, multiply by 100 for contracts
+    const multiplier = trans.assetType === "Stock" ? 1 : 100;
+    const cost = trans.price * trans.quantity * multiplier + trans.fees;
+
+    if (trans.side === "buy") {
+      // Buying adds to position quantity and cost basis
+      position.quantity += trans.quantity;
+      position.totalCost += cost;
+    } else if (trans.side === "sell") {
+      // Selling reduces position quantity and adds to proceeds
+      position.quantity -= trans.quantity;
+      position.totalProceeds += cost;
+    }
+
+    // Update last activity date
+    if (new Date(trans.tradeDate) > new Date(position.lastActivityDate)) {
+      position.lastActivityDate = trans.tradeDate;
     }
   }
 
-  // Add any remaining unmatched buys as open positions
-  for (const [key, buys] of Array.from(pendingBuys.entries())) {
-    for (const buy of buys) {
-      const qty = buy.quantity;
-      const price = buy.price;
-      const fees = buy.fees;
-      const totalInvested = qty * price + fees;
+  // Create trades only for fully closed positions (quantity === 0)
+  const trades: ParsedTrade[] = [];
 
-      trades.push({
-        tradeDate: buy.tradeDate,
-        tradeTime: buy.tradeTime,
-        ticker: buy.symbol,
-        assetType: buy.assetType,
-        expirationDate: buy.expirationDate,
-        strikePrice: buy.strikePrice,
-        entryPrice: price.toFixed(4),
-        exitPrice: undefined,
-        quantity: qty.toFixed(0),
-        contracts: buy.assetType !== "Stock" ? qty.toFixed(0) : undefined,
-        totalInvested: totalInvested.toFixed(2),
-        totalReturn: "0", // Open position
-        percentReturn: "0",
-        notes: `Broker ${buy.orderType || "Buy"} (open position)`.trim() || "Imported from broker CSV",
+  for (const [key, position] of Array.from(positions.entries())) {
+    if (position.quantity === 0 && position.totalCost > 0) {
+      // Position is fully closed, create trade
+      const totalReturn = position.totalProceeds - position.totalCost;
+      const percentReturn = position.totalCost > 0 ? (totalReturn / position.totalCost) * 100 : 0;
+      
+      // Calculate average entry/exit prices
+      // For stocks: average price per share
+      // For options: average price per contract (divide by quantity * 100)
+      const multiplier = position.assetType === "Stock" ? 1 : 100;
+      // We need to track the actual quantity that was closed
+      // Since we're tracking cumulative, we need to estimate based on cost basis
+      // For now, use a reasonable estimate: totalCost / averagePrice = quantity
+      // This is approximate - ideally we'd track each transaction
+      const estimatedQuantity = position.assetType === "Stock" 
+        ? Math.round(position.totalCost / (position.totalCost / position.totalCost * 10)) // Rough estimate
+        : Math.round(position.totalCost / (position.totalCost / position.totalCost * 10)); // Rough estimate
+      
+      // Better approach: track the actual closed quantity by summing buy quantities
+      // For simplicity, use the absolute value of the max quantity during the position's lifecycle
+      // Since quantity went to 0, we can estimate by finding transactions for this position
+      const positionTransactions = transactions.filter(t => {
+        const tKey = t.assetType === "Stock"
+          ? `${t.symbol}-${t.assetType}`
+          : `${t.symbol}-${t.assetType}-${t.strikePrice || ""}-${t.expirationDate || ""}`;
+        return tKey === key;
       });
+      
+      // Calculate actual closed quantity: sum of all buy quantities
+      const buyQuantity = positionTransactions
+        .filter(t => t.side === "buy")
+        .reduce((sum, t) => sum + t.quantity, 0);
+      const sellQuantity = positionTransactions
+        .filter(t => t.side === "sell")
+        .reduce((sum, t) => sum + t.quantity, 0);
+      
+      // The closed quantity is the minimum of buy and sell quantities
+      const closedQuantity = Math.min(buyQuantity, sellQuantity);
+
+      if (closedQuantity > 0) {
+        // Calculate average prices based on the actual closed quantity
+        // Since position is fully closed (quantity === 0), buyQuantity should equal sellQuantity
+        // Use closedQuantity (which is the actual quantity that was closed) for price calculations
+        const avgEntryPrice = position.totalCost / (closedQuantity * multiplier);
+        const avgExitPrice = position.totalProceeds / (closedQuantity * multiplier);
+
+        trades.push({
+          tradeDate: position.firstBuyDate,
+          ticker: position.symbol,
+          assetType: position.assetType,
+          expirationDate: position.expirationDate,
+          strikePrice: position.strikePrice,
+          entryPrice: avgEntryPrice.toFixed(4),
+          exitPrice: avgExitPrice.toFixed(4),
+          quantity: closedQuantity.toFixed(0),
+          contracts: position.assetType !== "Stock" ? closedQuantity.toFixed(0) : undefined,
+          totalInvested: position.totalCost.toFixed(2),
+          totalReturn: totalReturn.toFixed(2),
+          percentReturn: percentReturn.toFixed(2),
+          notes: "Imported from broker CSV",
+        });
+      }
     }
+    // Note: We intentionally skip open positions (quantity !== 0) - don't create trades for them
   }
 
   if (trades.length === 0) {

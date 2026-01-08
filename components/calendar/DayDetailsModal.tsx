@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,31 +12,16 @@ import { format } from "date-fns";
 
 interface DayDetailsModalProps {
   date: Date;
+  data: {
+    trades: any[];
+    dailyPerf: any;
+    journal: any;
+  } | null;
+  loading: boolean;
   onClose: () => void;
 }
 
-export function DayDetailsModal({ date, onClose }: DayDetailsModalProps) {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDayDetails();
-  }, [date]);
-
-  async function loadDayDetails() {
-    setLoading(true);
-    try {
-      const dateStr = date.toISOString().split("T")[0];
-      const response = await fetch(`/api/calendar/day?date=${dateStr}`);
-      const dayData = await response.json();
-      setData(dayData);
-    } catch (error) {
-      console.error("Failed to load day details:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
+export function DayDetailsModal({ date, data, loading, onClose }: DayDetailsModalProps) {
   if (loading || !data) {
     return (
       <Dialog open={true} onOpenChange={onClose}>

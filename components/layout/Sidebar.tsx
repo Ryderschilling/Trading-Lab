@@ -18,13 +18,13 @@ import { List } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Trades", href: "/trades", icon: List },
-  { name: "Upload Trades", href: "/upload", icon: Upload },
-  { name: "Calendar", href: "/calendar", icon: Calendar },
-  { name: "Goals", href: "/goals", icon: Target },
-  { name: "Journal", href: "/journal", icon: BookOpen },
-  { name: "AI Assistant", href: "/assistant", icon: MessageSquare },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "AI", href: "/assistant", icon: MessageSquare },
+  { name: "Upload", href: "/upload", icon: Upload },
+  { name: "Trades", href: "/trades", icon: List },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Journal", href: "/journal", icon: BookOpen },
+  { name: "Goals", href: "/goals", icon: Target },
 ];
 
 export function Sidebar() {

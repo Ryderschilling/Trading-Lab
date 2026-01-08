@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { CalendarView } from "@/components/calendar/CalendarView";
+import { getCalendarData } from "@/lib/actions/calendar";
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,8 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const year = searchParams.year ? parseInt(searchParams.year) : now.getFullYear();
   const month = searchParams.month ? parseInt(searchParams.month) : now.getMonth() + 1;
 
-  return <CalendarView year={year} month={month} />;
+  const calendarData = await getCalendarData(year, month);
+
+  return <CalendarView year={year} month={month} calendarData={calendarData} />;
 }
 

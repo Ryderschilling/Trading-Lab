@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,35 +8,45 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CalendarDay } from "./CalendarDay";
 import { DayDetailsModal } from "./DayDetailsModal";
 import { formatCurrency, cn } from "@/lib/utils";
-import { getCalendarData } from "@/lib/actions/calendar";
 
 interface CalendarViewProps {
   year: number;
   month: number;
+  calendarData: {
+    days: any[];
+    monthlyStats: any;
+    streaks: {
+      currentWinStreak: number;
+      currentLossStreak: number;
+      maxWinStreak: number;
+      maxLossStreak: number;
+    };
+  };
 }
 
-export function CalendarView({ year: initialYear, month: initialMonth }: CalendarViewProps) {
+export function CalendarView({ year: initialYear, month: initialMonth, calendarData: initialCalendarData }: CalendarViewProps) {
   const router = useRouter();
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
-  const [calendarData, setCalendarData] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [dayDetails, setDayDetails] = useState<any>(null);
+  const [loadingDayDetails, setLoadingDayDetails] = useState(false);
 
-  useEffect(() => {
-    loadCalendarData();
-  }, [year, month]);
-
-  async function loadCalendarData() {
-    setLoading(true);
+  async function handleDayClick(date: Date) {
+    setSelectedDate(date);
+    setLoadingDayDetails(true);
     try {
-      const response = await fetch(`/api/calendar?year=${year}&month=${month}`);
-      const data = await response.json();
-      setCalendarData(data);
+      const dateStr = date.toISOString().split("T")[0];
+      const response = await fetch(`/api/calendar/day?date=${dateStr}`);
+      if (!response.ok) {
+        throw new Error("Failed to load day details");
+      }
+      const details = await response.json();
+      setDayDetails(details);
     } catch (error) {
-      console.error("Failed to load calendar data:", error);
+      console.error("Failed to load day details:", error);
     } finally {
-      setLoading(false);
+      setLoadingDayDetails(false);
     }
   }
 
@@ -48,30 +58,22 @@ export function CalendarView({ year: initialYear, month: initialMonth }: Calenda
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   function handlePrevMonth() {
-    if (month === 1) {
-      setMonth(12);
-      setYear(year - 1);
-    } else {
-      setMonth(month - 1);
-    }
-    router.push(`/calendar?year=${month === 1 ? year - 1 : year}&month=${month === 1 ? 12 : month - 1}`);
+    const newMonth = month === 1 ? 12 : month - 1;
+    const newYear = month === 1 ? year - 1 : year;
+    setMonth(newMonth);
+    setYear(newYear);
+    router.push(`/calendar?year=${newYear}&month=${newMonth}`);
   }
 
   function handleNextMonth() {
-    if (month === 12) {
-      setMonth(1);
-      setYear(year + 1);
-    } else {
-      setMonth(month + 1);
-    }
-    router.push(`/calendar?year=${month === 12 ? year + 1 : year}&month=${month === 12 ? 1 : month + 1}`);
+    const newMonth = month === 12 ? 1 : month + 1;
+    const newYear = month === 12 ? year + 1 : year;
+    setMonth(newMonth);
+    setYear(newYear);
+    router.push(`/calendar?year=${newYear}&month=${newMonth}`);
   }
 
-  if (loading || !calendarData) {
-    return <div className="text-center py-12">Loading calendar...</div>;
-  }
-
-  const { days, monthlyStats, streaks } = calendarData;
+  const { days, monthlyStats, streaks } = initialCalendarData;
 
   // Get first day of month to determine offset
   const firstDay = new Date(year, month - 1, 1);
@@ -225,7 +227,7 @@ export function CalendarView({ year: initialYear, month: initialMonth }: Calenda
               <CalendarDay
                 key={day.day}
                 day={day}
-                onClick={() => setSelectedDate(day.date)}
+                onClick={() => handleDayClick(day.date)}
               />
             ))}
           </div>
@@ -235,7 +237,12 @@ export function CalendarView({ year: initialYear, month: initialMonth }: Calenda
       {selectedDate && (
         <DayDetailsModal
           date={selectedDate}
-          onClose={() => setSelectedDate(null)}
+          data={dayDetails}
+          loading={loadingDayDetails}
+          onClose={() => {
+            setSelectedDate(null);
+            setDayDetails(null);
+          }}
         />
       )}
     </div>
