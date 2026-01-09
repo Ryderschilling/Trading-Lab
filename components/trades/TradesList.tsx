@@ -20,7 +20,6 @@ interface Trade {
   tradeDate: Date;
   totalReturn: number;
   percentReturn: number;
-  strategyTag: string | null;
   optionMetadata?: {
     strikePrice: number | null;
     expirationDate: Date | null;
@@ -37,7 +36,6 @@ export function TradesList({ trades }: TradesListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [assetTypeFilter, setAssetTypeFilter] = useState<string>("all");
   const [profitFilter, setProfitFilter] = useState<string>("all");
-  const [strategyFilter, setStrategyFilter] = useState<string>("all");
   const [dateRangeStart, setDateRangeStart] = useState("");
   const [dateRangeEnd, setDateRangeEnd] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -80,12 +78,11 @@ export function TradesList({ trades }: TradesListProps) {
 
   const filteredTrades = useMemo(() => {
     return trades.filter((trade) => {
-      // Search filter (ticker + strategy)
+      // Search filter (ticker only)
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesTicker = trade.ticker.toLowerCase().includes(query);
-        const matchesStrategy = trade.strategyTag?.toLowerCase().includes(query) || false;
-        if (!matchesTicker && !matchesStrategy) return false;
+        if (!matchesTicker) return false;
       }
 
       // Asset type filter
@@ -100,9 +97,6 @@ export function TradesList({ trades }: TradesListProps) {
         if (profitFilter === "loss" && trade.totalReturn >= 0) return false;
       }
 
-      // Strategy filter
-      if (strategyFilter !== "all" && trade.strategyTag !== strategyFilter) return false;
-
       // Date range filter
       if (dateRangeStart) {
         const startDate = new Date(dateRangeStart);
@@ -116,7 +110,7 @@ export function TradesList({ trades }: TradesListProps) {
 
       return true;
     });
-  }, [trades, searchQuery, assetTypeFilter, profitFilter, strategyFilter, dateRangeStart, dateRangeEnd]);
+  }, [trades, searchQuery, assetTypeFilter, profitFilter, dateRangeStart, dateRangeEnd]);
 
   if (trades.length === 0) {
     return (
@@ -160,7 +154,7 @@ export function TradesList({ trades }: TradesListProps) {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by ticker or strategy..."
+                placeholder="Search by ticker..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -168,7 +162,7 @@ export function TradesList({ trades }: TradesListProps) {
             </div>
 
             {/* Filter Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Asset Type</label>
                 <Select value={assetTypeFilter} onValueChange={setAssetTypeFilter}>
@@ -198,21 +192,6 @@ export function TradesList({ trades }: TradesListProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Strategy</label>
-                <Select value={strategyFilter} onValueChange={setStrategyFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="Day Trade">Day Trade</SelectItem>
-                    <SelectItem value="Swing Trade">Swing Trade</SelectItem>
-                    <SelectItem value="Long-Term">Long-Term</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <label className="text-sm font-medium">Start Date</label>
                 <Input
                   type="date"
@@ -232,7 +211,7 @@ export function TradesList({ trades }: TradesListProps) {
             </div>
 
             {/* Clear Filters */}
-            {(searchQuery || assetTypeFilter !== "all" || profitFilter !== "all" || strategyFilter !== "all" || dateRangeStart || dateRangeEnd) && (
+            {(searchQuery || assetTypeFilter !== "all" || profitFilter !== "all" || dateRangeStart || dateRangeEnd) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -240,7 +219,6 @@ export function TradesList({ trades }: TradesListProps) {
                   setSearchQuery("");
                   setAssetTypeFilter("all");
                   setProfitFilter("all");
-                  setStrategyFilter("all");
                   setDateRangeStart("");
                   setDateRangeEnd("");
                 }}
@@ -264,14 +242,13 @@ export function TradesList({ trades }: TradesListProps) {
                   <th className="p-4 text-left text-sm font-medium">Asset Type</th>
                   <th className="p-4 text-right text-sm font-medium">Profit $</th>
                   <th className="p-4 text-right text-sm font-medium">% Profit</th>
-                  <th className="p-4 text-left text-sm font-medium">Strategy</th>
                   <th className="p-4 text-center text-sm font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTrades.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
                       No trades match your filters.
                     </td>
                   </tr>
@@ -295,9 +272,6 @@ export function TradesList({ trades }: TradesListProps) {
                       </td>
                       <td className={`p-4 text-right ${trade.percentReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
                         {formatPercent(trade.percentReturn)}
-                      </td>
-                      <td className="p-4 text-sm text-muted-foreground">
-                        {trade.strategyTag || "-"}
                       </td>
                       <td className="p-4 text-center">
                         <Link href={`/trades/${trade.id}`}>

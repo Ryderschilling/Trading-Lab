@@ -28,7 +28,6 @@ interface TradeDetailProps {
     totalInvested: number;
     totalReturn: number;
     percentReturn: number;
-    strategyTag: string | null;
     notes: string | null;
     optionMetadata?: {
       strikePrice: number | null;
@@ -57,7 +56,6 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
   const [exitPrice, setExitPrice] = useState(initialTrade.exitPrice?.toString() || "");
   const [quantity, setQuantity] = useState(initialTrade.quantity.toString());
   const [contracts, setContracts] = useState(initialTrade.contracts?.toString() || "");
-  const [strategy, setStrategy] = useState(initialTrade.strategyTag || "");
 
   // Auto-calculated values
   const [totalInvested, setTotalInvested] = useState("");
@@ -113,8 +111,6 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
       formData.append("totalInvested", totalInvested);
       formData.append("totalReturn", realizedProfit);
       formData.append("percentReturn", percentProfit);
-      
-      if (strategy) formData.append("strategyTag", strategy);
 
       await updateTrade(initialTrade.id, formData);
       
@@ -274,19 +270,6 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Strategy</Label>
-                <Select value={strategy} onValueChange={setStrategy}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select strategy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Day Trade">Day Trade</SelectItem>
-                    <SelectItem value="Swing Trade">Swing Trade</SelectItem>
-                    <SelectItem value="Long-Term">Long-Term</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -389,10 +372,6 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
               </p>
             </div>
 
-            <div>
-              <Label className="text-muted-foreground">Strategy</Label>
-              <p className="text-lg font-semibold">{initialTrade.strategyTag || "N/A"}</p>
-            </div>
           </div>
         </CardContent>
       </Card>

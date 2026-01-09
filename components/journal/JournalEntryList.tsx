@@ -8,12 +8,20 @@ import { CreateJournalEntry } from "./CreateJournalEntry";
 interface JournalEntry {
   id: string;
   date: Date;
-  preMarketPlan?: string | null;
-  marketBias?: string | null;
-  emotionalState?: string | null;
-  whatWentWell?: string | null;
-  whatWentWrong?: string | null;
-  lessonsLearned?: string | null;
+  breakfast?: string | null;
+  caffeine?: string | null;
+  sugar?: string | null;
+  hydration?: string | null;
+  sleepDuration?: string | null;
+  sleepQuality?: string | null;
+  bedtime?: string | null;
+  wakeFeeling?: string | null;
+  tradingQuality?: string | null;
+  revengeTrading?: string | null;
+  distractions?: string | null;
+  overtrading?: string | null;
+  timeSpentTrading?: string | null;
+  stoppedWhenShouldHave?: string | null;
 }
 
 interface JournalEntryListProps {
@@ -54,50 +62,101 @@ export function JournalEntryList({ entries }: JournalEntryListProps) {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {entry.preMarketPlan && (
-              <div>
-                <h3 className="font-semibold mb-2">Pre-Market Plan</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {entry.preMarketPlan}
-                </p>
-              </div>
-            )}
-            {entry.marketBias && (
-              <div>
-                <h3 className="font-semibold mb-2">Market Bias</h3>
-                <p className="text-sm text-muted-foreground">{entry.marketBias}</p>
-              </div>
-            )}
-            {entry.emotionalState && (
-              <div>
-                <h3 className="font-semibold mb-2">Emotional State</h3>
-                <p className="text-sm text-muted-foreground">{entry.emotionalState}</p>
-              </div>
-            )}
-            {entry.whatWentWell && (
-              <div>
-                <h3 className="font-semibold mb-2">What Went Well</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {entry.whatWentWell}
-                </p>
-              </div>
-            )}
-            {entry.whatWentWrong && (
-              <div>
-                <h3 className="font-semibold mb-2">What Went Wrong</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {entry.whatWentWrong}
-                </p>
-              </div>
-            )}
-            {entry.lessonsLearned && (
-              <div>
-                <h3 className="font-semibold mb-2">Lessons Learned</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {entry.lessonsLearned}
-                </p>
-              </div>
-            )}
+            {/* Nutrition & Stimulants */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {entry.breakfast && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Breakfast</h3>
+                  <p className="text-sm text-muted-foreground">{entry.breakfast}</p>
+                </div>
+              )}
+              {entry.caffeine && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Caffeine</h3>
+                  <p className="text-sm text-muted-foreground">{entry.caffeine}</p>
+                </div>
+              )}
+              {entry.sugar && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Sugar</h3>
+                  <p className="text-sm text-muted-foreground">{entry.sugar}</p>
+                </div>
+              )}
+              {entry.hydration && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Hydration</h3>
+                  <p className="text-sm text-muted-foreground">{entry.hydration}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Sleep & Recovery */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {entry.sleepDuration && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Sleep Duration</h3>
+                  <p className="text-sm text-muted-foreground">{entry.sleepDuration}</p>
+                </div>
+              )}
+              {entry.sleepQuality && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Sleep Quality</h3>
+                  <p className="text-sm text-muted-foreground">{entry.sleepQuality}</p>
+                </div>
+              )}
+              {entry.bedtime && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Bedtime</h3>
+                  <p className="text-sm text-muted-foreground">{entry.bedtime}</p>
+                </div>
+              )}
+              {entry.wakeFeeling && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Wake Feeling</h3>
+                  <p className="text-sm text-muted-foreground">{entry.wakeFeeling}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Trading Behavior */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {entry.tradingQuality && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Trading Quality</h3>
+                  <p className="text-sm text-muted-foreground">{entry.tradingQuality}</p>
+                </div>
+              )}
+              {entry.revengeTrading && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Revenge Trading</h3>
+                  <p className="text-sm text-muted-foreground">{entry.revengeTrading}</p>
+                </div>
+              )}
+              {entry.distractions && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Distractions</h3>
+                  <p className="text-sm text-muted-foreground">{entry.distractions}</p>
+                </div>
+              )}
+              {entry.overtrading && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Overtrading</h3>
+                  <p className="text-sm text-muted-foreground">{entry.overtrading}</p>
+                </div>
+              )}
+              {entry.timeSpentTrading && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Time Spent Trading</h3>
+                  <p className="text-sm text-muted-foreground">{entry.timeSpentTrading}</p>
+                </div>
+              )}
+              {entry.stoppedWhenShouldHave && (
+                <div>
+                  <h3 className="font-semibold mb-1 text-sm">Stopped When Should Have</h3>
+                  <p className="text-sm text-muted-foreground">{entry.stoppedWhenShouldHave}</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       ))}

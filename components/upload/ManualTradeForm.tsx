@@ -27,7 +27,6 @@ export function ManualTradeForm() {
   const [exitPrice, setExitPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [contracts, setContracts] = useState("");
-  const [strategy, setStrategy] = useState("");
 
   // Auto-calculated values
   const [totalInvested, setTotalInvested] = useState("");
@@ -97,8 +96,6 @@ export function ManualTradeForm() {
       formData.append("totalReturn", realizedProfit);
       formData.append("percentReturn", percentProfit);
       
-      if (strategy) formData.append("strategyTag", strategy);
-
       await createTrade(formData);
       
       toast({
@@ -120,7 +117,6 @@ export function ManualTradeForm() {
       setExitPrice("");
       setQuantity("");
       setContracts("");
-      setStrategy("");
     } catch (err) {
       toast({
         title: "Error",
@@ -318,20 +314,6 @@ export function ManualTradeForm() {
               />
             </div>
 
-            {/* Strategy */}
-            <div className="space-y-2">
-              <Label htmlFor="strategy">Strategy</Label>
-              <Select value={strategy} onValueChange={setStrategy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select strategy" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Day Trade">Day Trade</SelectItem>
-                  <SelectItem value="Swing Trade">Swing Trade</SelectItem>
-                  <SelectItem value="Long-Term">Long-Term</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <Button type="submit" disabled={loading} className="w-full">

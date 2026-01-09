@@ -8,7 +8,14 @@ import { useState } from "react";
 import Link from "next/link";
 
 export function Navbar() {
-  const { user } = useUser();
+  let user;
+  try {
+    const userResult = useUser();
+    user = userResult.user;
+  } catch (error) {
+    // ClerkProvider not available during prerender, continue without user
+    user = null;
+  }
   const router = useRouter();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 

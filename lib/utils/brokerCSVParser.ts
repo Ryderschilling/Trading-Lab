@@ -18,7 +18,7 @@ export interface ParsedTrade {
   totalInvested?: string;
   totalReturn: string;
   percentReturn?: string;
-  strategyTag?: string;
+  status?: string; // CLOSED, OPEN
   notes?: string;
 }
 
@@ -365,36 +365,24 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
     }
   }
 
-  // Create trades only for fully closed positions (quantity === 0)
+  // Create trades for closed positions (quantity === 0) and open positions (quantity !== 0)
   const trades: ParsedTrade[] = [];
 
   for (const [key, position] of Array.from(positions.entries())) {
+    // Find transactions for this position to calculate quantities
+    const positionTransactions = transactions.filter(t => {
+      const tKey = t.assetType === "Stock"
+        ? `${t.symbol}-${t.assetType}`
+        : `${t.symbol}-${t.assetType}-${t.strikePrice || ""}-${t.expirationDate || ""}`;
+      return tKey === key;
+    });
+    
+    const multiplier = position.assetType === "Stock" ? 1 : 100;
+    
     if (position.quantity === 0 && position.totalCost > 0) {
       // Position is fully closed, create trade
       const totalReturn = position.totalProceeds - position.totalCost;
       const percentReturn = position.totalCost > 0 ? (totalReturn / position.totalCost) * 100 : 0;
-      
-      // Calculate average entry/exit prices
-      // For stocks: average price per share
-      // For options: average price per contract (divide by quantity * 100)
-      const multiplier = position.assetType === "Stock" ? 1 : 100;
-      // We need to track the actual quantity that was closed
-      // Since we're tracking cumulative, we need to estimate based on cost basis
-      // For now, use a reasonable estimate: totalCost / averagePrice = quantity
-      // This is approximate - ideally we'd track each transaction
-      const estimatedQuantity = position.assetType === "Stock" 
-        ? Math.round(position.totalCost / (position.totalCost / position.totalCost * 10)) // Rough estimate
-        : Math.round(position.totalCost / (position.totalCost / position.totalCost * 10)); // Rough estimate
-      
-      // Better approach: track the actual closed quantity by summing buy quantities
-      // For simplicity, use the absolute value of the max quantity during the position's lifecycle
-      // Since quantity went to 0, we can estimate by finding transactions for this position
-      const positionTransactions = transactions.filter(t => {
-        const tKey = t.assetType === "Stock"
-          ? `${t.symbol}-${t.assetType}`
-          : `${t.symbol}-${t.assetType}-${t.strikePrice || ""}-${t.expirationDate || ""}`;
-        return tKey === key;
-      });
       
       // Calculate actual closed quantity: sum of all buy quantities
       const buyQuantity = positionTransactions
@@ -409,8 +397,6 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
 
       if (closedQuantity > 0) {
         // Calculate average prices based on the actual closed quantity
-        // Since position is fully closed (quantity === 0), buyQuantity should equal sellQuantity
-        // Use closedQuantity (which is the actual quantity that was closed) for price calculations
         const avgEntryPrice = position.totalCost / (closedQuantity * multiplier);
         const avgExitPrice = position.totalProceeds / (closedQuantity * multiplier);
 
@@ -427,11 +413,36 @@ export function parseBrokerCSV(csvText: string): ParsedTrade[] {
           totalInvested: position.totalCost.toFixed(2),
           totalReturn: totalReturn.toFixed(2),
           percentReturn: percentReturn.toFixed(2),
+          status: "CLOSED",
           notes: "Imported from broker CSV",
         });
       }
+    } else if (position.quantity !== 0 && position.totalCost > 0) {
+      // Store open positions with status: "OPEN" and realizedPnL: 0
+      const buyQuantity = positionTransactions
+        .filter(t => t.side === "buy")
+        .reduce((sum, t) => sum + t.quantity, 0);
+      
+      if (buyQuantity > 0) {
+        const avgEntryPrice = position.totalCost / (buyQuantity * multiplier);
+        trades.push({
+          tradeDate: position.firstBuyDate,
+          ticker: position.symbol,
+          assetType: position.assetType,
+          expirationDate: position.expirationDate,
+          strikePrice: position.strikePrice,
+          entryPrice: avgEntryPrice.toFixed(4),
+          exitPrice: undefined,
+          quantity: Math.abs(position.quantity).toFixed(0),
+          contracts: position.assetType !== "Stock" ? Math.abs(position.quantity).toFixed(0) : undefined,
+          totalInvested: position.totalCost.toFixed(2),
+          totalReturn: "0.00", // Open positions have no realized P&L
+          percentReturn: "0.00",
+          status: "OPEN",
+          notes: "Open position from broker CSV",
+        });
+      }
     }
-    // Note: We intentionally skip open positions (quantity !== 0) - don't create trades for them
   }
 
   if (trades.length === 0) {

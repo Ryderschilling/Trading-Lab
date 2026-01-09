@@ -1,12 +1,10 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getStats, getTrades, getDailyPerformance } from "@/lib/actions/trades";
+import { getStats, getDailyPerformance } from "@/lib/actions/trades";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { EquityCurve } from "@/components/dashboard/EquityCurve";
 import { DailyPnlChart } from "@/components/dashboard/DailyPnlChart";
-import { RecentTrades } from "@/components/dashboard/RecentTrades";
 import { WinLossDistribution } from "@/components/dashboard/WinLossDistribution";
-import { StrategyPerformance } from "@/components/dashboard/StrategyPerformance";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,20 +13,17 @@ export default async function DashboardPage() {
   if (!user) redirect("/");
 
   let stats: Awaited<ReturnType<typeof getStats>> = null;
-  let trades: Awaited<ReturnType<typeof getTrades>> = [];
   let dailyPerf: Awaited<ReturnType<typeof getDailyPerformance>> = [];
   
   try {
-    [stats, trades, dailyPerf] = await Promise.all([
+    [stats, dailyPerf] = await Promise.all([
       getStats(),
-      getTrades(10),
       getDailyPerformance(),
     ]);
   } catch (error) {
     console.error("Error loading dashboard data:", error);
     // If database isn't set up, show empty state
     stats = null;
-    trades = [];
     dailyPerf = [];
   }
 
@@ -54,6 +49,10 @@ export default async function DashboardPage() {
   }
 
   const recentDays = dailyPerf.slice(-30);
+  
+  // Calculate Green vs Red Days from all daily performance
+  const greenDays = dailyPerf.filter(d => d.netPnl > 0).length;
+  const redDays = dailyPerf.filter(d => d.netPnl < 0).length;
 
   return (
     <div className="space-y-6">
@@ -66,23 +65,56 @@ export default async function DashboardPage() {
           value={stats.totalPnl}
           format="currency"
           trend={stats.totalPnl >= 0 ? "up" : "down"}
-        />
-        <KPICard
-          title="Win Rate"
-          value={stats.winRate}
-          format="percent"
-          trend={stats.winRate >= 50 ? "up" : "down"}
+          tooltip="Your total realized profit or loss from closed trades during this period."
         />
         <KPICard
           title="Profit Factor"
           value={stats.profitFactor}
           format="number"
           trend={stats.profitFactor >= 1 ? "up" : "down"}
+          tooltip="Total profits divided by total losses. Above 1 means you're profitable overall."
         />
         <KPICard
-          title="Total Trades"
+          title="Win Rate"
+          value={stats.winRate}
+          format="percent"
+          trend={stats.winRate >= 50 ? "up" : "down"}
+          tooltip="Percentage of trades that closed with a profit."
+        />
+        <KPICard
+          title="Average Trade P&L"
+          value={stats.avgTradePnl || 0}
+          format="currency"
+          trend={(stats.avgTradePnl || 0) >= 0 ? "up" : "down"}
+          tooltip="Your average profit or loss per closed trade. Includes both winning and losing trades."
+        />
+        <KPICard
+          title="Trade Count"
           value={stats.totalTrades}
           format="number"
+          tooltip="Total number of trades closed during this period."
+        />
+        <KPICard
+          title="Green vs Red Days"
+          value={greenDays}
+          format="number"
+          trend={greenDays >= redDays ? "up" : "down"}
+          tooltip="Number of profitable days compared to losing days."
+          customDisplay={`${greenDays} vs ${redDays}`}
+        />
+        <KPICard
+          title="Largest Win"
+          value={stats.largestWin || 0}
+          format="currency"
+          trend="up"
+          tooltip="Your single most profitable trade in this period."
+        />
+        <KPICard
+          title="Largest Loss"
+          value={stats.largestLoss || 0}
+          format="currency"
+          trend="down"
+          tooltip="Your single biggest losing trade in this period."
         />
       </div>
 
@@ -95,11 +127,7 @@ export default async function DashboardPage() {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <WinLossDistribution stats={stats} />
-        <StrategyPerformance trades={trades} />
       </div>
-
-      {/* Recent Trades */}
-      <RecentTrades trades={trades} />
     </div>
   );
 }

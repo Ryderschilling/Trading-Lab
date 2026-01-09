@@ -29,7 +29,7 @@ interface CSVRow {
   totalInvested?: string;
   totalReturn?: string;
   percentReturn?: string;
-  strategyTag?: string;
+  status?: string;
   notes?: string;
 }
 
@@ -141,7 +141,6 @@ export function CSVUpload() {
                 totalInvested: t.totalInvested,
                 totalReturn: t.totalReturn,
                 percentReturn: t.percentReturn,
-                strategyTag: t.strategyTag,
                 notes: t.notes,
               })));
               setError(null);
@@ -265,7 +264,6 @@ export function CSVUpload() {
                 totalInvested: row.totalInvested,
                 totalReturn: row.totalReturn || "0",
                 percentReturn: row.percentReturn,
-                strategyTag: row.strategyTag,
                 notes: row.notes,
               }));
               resolve(trades);
@@ -327,7 +325,7 @@ export function CSVUpload() {
           formData.append("totalInvested", trade.totalInvested || "0");
           formData.append("totalReturn", trade.totalReturn || "0");
           if (trade.percentReturn) formData.append("percentReturn", trade.percentReturn);
-          if (trade.strategyTag) formData.append("strategyTag", trade.strategyTag);
+          if (trade.status) formData.append("status", trade.status);
           if (trade.notes) formData.append("notes", trade.notes);
           if (trade.expirationDate) formData.append("expirationDate", trade.expirationDate);
           if (trade.strikePrice) formData.append("strikePrice", trade.strikePrice);
@@ -403,7 +401,7 @@ export function CSVUpload() {
       "totalInvested",
       "totalReturn",
       "percentReturn",
-      "strategyTag",
+      "status",
       "notes",
     ];
 

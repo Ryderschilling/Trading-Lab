@@ -24,7 +24,7 @@ model User {
   goals             Goal[]
   journalEntries    JournalEntry[]
   aiConversations   AIConversationHistory[]
-  strategyTags      StrategyTag[]
+  rawCsvRows        RawCSVRow[]
 
   @@map("users")
 }
@@ -43,17 +43,19 @@ model Trade {
   totalInvested   Float
   totalReturn     Float
   percentReturn   Float
-  strategyTag     String?
+  status          String  @default("CLOSED") // CLOSED, OPEN
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   optionMetadata  OptionMetadata?
+  rawCsvRow       RawCSVRow?
 
   @@index([userId, tradeDate])
   @@index([userId, ticker])
   @@index([userId, assetType])
+  @@index([userId, status])
   @@map("trades")
 }
 
@@ -126,15 +128,13 @@ model AggregatedStats {
   totalTrades       Int      @default(0)
   winRate           Float    @default(0)
   avgWin            Float    @default(0)
-  avgLoss            Float    @default(0)
-  riskToReward      Float    @default(0)
-  maxDrawdown       Float    @default(0)
+  avgLoss           Float    @default(0)
+  avgTradePnl       Float    @default(0) // Average Trade P/L
   profitFactor      Float    @default(0)
-  avgHoldTime       Float    @default(0) // in hours
   bestTicker        String?
   worstTicker       String?
-  bestStrategy      String?
-  worstStrategy     String?
+  largestWin        Float?
+  largestLoss       Float?
   callsPnl          Float    @default(0)
   putsPnl           Float    @default(0)
   stocksPnl         Float    @default(0)
@@ -181,12 +181,27 @@ model JournalEntry {
   id              String   @id @default(cuid())
   userId          String
   date            DateTime @db.Date
-  preMarketPlan   String?
-  marketBias      String?
-  emotionalState  String?
-  whatWentWell    String?
-  whatWentWrong   String?
-  lessonsLearned  String?
+  
+  // Nutrition & Stimulants
+  breakfast       String? // Skipped / Light / Balanced / Heavy
+  caffeine        String? // None / 1 serving / 2–3 servings / 4+ servings
+  sugar           String? // None / Some / High
+  hydration       String? // Low / Moderate / Well hydrated
+  
+  // Sleep & Recovery
+  sleepDuration   String? // <5h / 5–6h / 6–7h / 7–8h / 8+h
+  sleepQuality    String? // Poor / Okay / Great
+  bedtime         String? // Before 10pm / 10–12 / After 12
+  wakeFeeling     String? // Tired / Neutral / Energized
+  
+  // Trading Behavior
+  tradingQuality  String? // Disciplined / Average / Sloppy
+  revengeTrading  String? // Yes / No
+  distractions    String? // None / Minor / Frequent
+  overtrading     String? // Yes / No
+  timeSpentTrading String? // <30 min / 30–60 min / 1–2 hrs / 2+ hrs
+  stoppedWhenShouldHave String? // Yes / No
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -197,18 +212,6 @@ model JournalEntry {
   @@map("journal_entries")
 }
 
-model StrategyTag {
-  id              String   @id @default(cuid())
-  userId          String
-  name            String
-  createdAt       DateTime @default(now())
-
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, name])
-  @@index([userId])
-  @@map("strategy_tags")
-}
 
 model AIConversationHistory {
   id              String   @id @default(cuid())
@@ -221,5 +224,20 @@ model AIConversationHistory {
 
   @@index([userId, createdAt])
   @@map("ai_conversation_history")
+}
+
+model RawCSVRow {
+  id              String   @id @default(cuid())
+  userId          String
+  tradeId         String?  @unique
+  rowData         String   // JSON string of original CSV row
+  uploadedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade           Trade?   @relation(fields: [tradeId], references: [id], onDelete: SetNull)
+
+  @@index([userId, uploadedAt])
+  @@map("raw_csv_rows")
 }
 

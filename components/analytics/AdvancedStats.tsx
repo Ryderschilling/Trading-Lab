@@ -9,13 +9,11 @@ interface AdvancedStatsProps {
     winRate: number;
     avgWin: number;
     avgLoss: number;
-    riskToReward: number;
-    maxDrawdown: number;
     profitFactor: number;
     bestTicker: string | null;
     worstTicker: string | null;
-    bestStrategy: string | null;
-    worstStrategy: string | null;
+    largestWin: number | null;
+    largestLoss: number | null;
   };
 }
 
@@ -44,32 +42,6 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
         <CardContent>
           <div className="text-2xl font-bold text-red-500">
             {formatCurrency(stats.avgLoss)}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Risk-to-Reward
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatNumber(stats.riskToReward)}:1
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Max Drawdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-red-500">
-            {formatCurrency(stats.maxDrawdown)}
           </div>
         </CardContent>
       </Card>
@@ -113,18 +85,35 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Best Strategy
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-neon-purple">
-            {stats.bestStrategy || "N/A"}
-          </div>
-        </CardContent>
-      </Card>
+      {stats.largestWin !== null && stats.largestWin !== undefined && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Largest Win
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-neon-green">
+              {formatCurrency(stats.largestWin)}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {stats.largestLoss !== null && stats.largestLoss !== undefined && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Largest Loss
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-500">
+              {formatCurrency(stats.largestLoss)}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
