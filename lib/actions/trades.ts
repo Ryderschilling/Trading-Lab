@@ -484,12 +484,69 @@ export async function getTrades(limit?: number) {
       return [];
     }
 
-    return await prisma.trade.findMany({
-      where: { userId: user.id },
-      include: { optionMetadata: true },
-      orderBy: { tradeDate: "desc" },
-      take: limit,
+    // Fetch both legacy trades (from Trade table) and executions
+    const [legacyTrades, executions] = await Promise.all([
+      prisma.trade.findMany({
+        where: { userId: user.id },
+        include: { optionMetadata: true },
+        orderBy: { tradeDate: "desc" },
+      }),
+      prisma.brokerExecution.findMany({
+        where: { userId: user.id },
+        orderBy: { activityDate: "desc" },
+      }),
+    ]);
+
+    // Aggregate executions into trades
+    const { buildTradesFromExecutions } = await import("@/lib/utils/tradeAggregation");
+    const aggregatedTrades = buildTradesFromExecutions(executions);
+
+    // Convert aggregated trades to Trade format expected by UI/Prisma model
+    const aggregatedTradeFormats = aggregatedTrades.map((trade) => {
+      // Create a stable ID from the position key
+      const tradeId = `exec-${trade.id}-${trade.entryDate.getTime()}`;
+      
+      return {
+        id: tradeId,
+        userId: user.id,
+        tradeDate: trade.tradeDate,
+        tradeTime: null,
+        ticker: trade.ticker,
+        assetType: trade.assetType === "Call" ? "Call" : trade.assetType === "Put" ? "Put" : "Stock",
+        entryPrice: trade.entryPrice,
+        exitPrice: trade.exitPrice,
+        quantity: Math.round(trade.quantity),
+        contracts: trade.contracts ? Math.round(trade.contracts) : null,
+        totalInvested: trade.totalInvested,
+        totalReturn: trade.totalReturn,
+        percentReturn: trade.percentReturn,
+        status: trade.status,
+        notes: null,
+        createdAt: trade.entryDate,
+        updatedAt: trade.exitDate || trade.entryDate,
+        optionMetadata: (trade.expirationDate || trade.strikePrice) ? {
+          id: `${tradeId}-option`,
+          tradeId: tradeId,
+          expirationDate: trade.expirationDate,
+          strikePrice: trade.strikePrice,
+          timeOfDay: null,
+          dayOfWeek: null,
+          is0DTE: false,
+          isWeekly: false,
+          isMonthly: false,
+        } : null,
+      };
     });
+
+    // Combine legacy trades and aggregated trades
+    // Prioritize aggregated trades (from executions) as they're the source of truth
+    const allTrades = [...aggregatedTradeFormats, ...legacyTrades];
+
+    // Sort by tradeDate descending (most recent first)
+    allTrades.sort((a, b) => b.tradeDate.getTime() - a.tradeDate.getTime());
+
+    // Apply limit if specified
+    return limit ? allTrades.slice(0, limit) : allTrades;
   } catch (error) {
     console.error("Error getting trades:", error);
     return [];
