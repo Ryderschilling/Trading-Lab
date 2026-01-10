@@ -190,3 +190,4 @@ The app is **structurally ready** for iOS submission with Capacitor, but **funct
 
 **Total: 8-16 hours of development work**
 
+

@@ -78,3 +78,4 @@ After this, your app should work! The database will be connected and all tables 
 - Make sure DATABASE_URL is in your local .env file
 - Run `npx prisma generate` first, then `npx prisma db push`
 
+
