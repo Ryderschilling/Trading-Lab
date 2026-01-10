@@ -10,7 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import Papa from "papaparse";
 import { createTrade } from "@/lib/actions/trades";
-import { parseBrokerCSV, ParsedTrade } from "@/lib/utils/brokerCSVParser";
+import { parseBrokerCSV } from "@/lib/utils/brokerCSVParser";
+import { uploadBrokerExecutions } from "@/lib/actions/executions";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_ROWS = 10000; // Maximum number of rows to process
@@ -38,10 +39,11 @@ export function CSVUpload() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [preview, setPreview] = useState<CSVRow[]>([]);
   const [csvType, setCsvType] = useState<"broker" | "custom">("broker");
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [totalTrades, setTotalTrades] = useState(0);
+  const [totalExecutions, setTotalExecutions] = useState(0);
 
   const isBrokerCSV = (headers: string[]): boolean => {
     // Check for standard broker CSV format columns
@@ -100,6 +102,7 @@ export function CSVUpload() {
     }
 
     setError(null);
+    setWarnings([]);
     setUploadProgress(0);
     setPreview([]);
     
@@ -124,73 +127,66 @@ export function CSVUpload() {
 
         if (isBroker) {
           try {
-            const parsed = parseBrokerCSV(fileText);
-            console.log("Parsed trades:", parsed.length);
-            if (parsed.length > 0) {
-              setPreview(parsed.slice(0, 5).map(t => ({
-                tradeDate: t.tradeDate,
-                tradeTime: t.tradeTime,
-                ticker: t.ticker,
-                assetType: t.assetType,
-                expirationDate: t.expirationDate,
-                strikePrice: t.strikePrice,
-                entryPrice: t.entryPrice,
-                exitPrice: t.exitPrice,
-                quantity: t.quantity,
-                contracts: t.contracts,
-                totalInvested: t.totalInvested,
-                totalReturn: t.totalReturn,
-                percentReturn: t.percentReturn,
-                notes: t.notes,
-              })));
+            // Parse broker CSV - returns { executions, warnings }
+            const parseResult = parseBrokerCSV(fileText);
+            console.log("Parsed executions:", parseResult.executions.length);
+            setWarnings(parseResult.warnings);
+            
+            if (parseResult.executions.length > 0) {
+              // Show preview of executions (convert to CSVRow-like format for display)
+              setPreview(parseResult.executions.slice(0, 5).map(e => ({
+                tradeDate: e.activityDate,
+                ticker: e.instrument,
+                assetType: e.transactionType,
+                quantity: e.quantity.toString(),
+                entryPrice: e.price.toString(),
+                totalReturn: e.amount.toString(),
+                description: e.description || "",
+              } as CSVRow)));
+              setTotalExecutions(parseResult.executions.length);
               setError(null);
             } else {
-              const errorMsg = "No valid trades found in CSV file. Please check the file format.";
-              setError(errorMsg);
-              toast({
-                title: "No Trades Found",
-                description: errorMsg,
-                variant: "destructive",
-              });
+              // Zero valid rows is still valid - just show warnings
+              setError(null);
+              if (parseResult.warnings.length > 0) {
+                toast({
+                  title: "Preview Complete",
+                  description: `No valid executions found. ${parseResult.warnings.length} warning(s).`,
+                  variant: "default",
+                });
+              }
             }
           } catch (err) {
             console.error("Parse error:", err);
+            // Parse should never throw now, but handle just in case
             const errorMsg = err instanceof Error ? err.message : "Failed to parse broker CSV";
-            setError(errorMsg);
+            setWarnings([errorMsg]);
+            setError(null); // Don't show as fatal error
             toast({
-              title: "Parse Error",
+              title: "Parse Warnings",
               description: errorMsg,
-              variant: "destructive",
+              variant: "default",
             });
           }
         } else {
-          // Parse as custom format
+          // Parse as custom format (legacy support)
           Papa.parse<CSVRow>(fileText, {
             header: true,
             skipEmptyLines: true,
             complete: (fullResults) => {
               if (fullResults.data.length === 0) {
-                const errorMsg = "CSV file appears to be empty or has no valid rows.";
-                setError(errorMsg);
-                toast({
-                  title: "Empty File",
-                  description: errorMsg,
-                  variant: "destructive",
-                });
+                setError(null); // Don't show as fatal error
+                setWarnings(["CSV file appears to be empty or has no valid rows."]);
               } else {
-                setTotalTrades(fullResults.data.length);
+                setTotalExecutions(fullResults.data.length);
                 setPreview(fullResults.data.slice(0, 5));
                 setError(null);
               }
             },
             error: (parseError: Error) => {
               const errorMsg = `Failed to parse CSV: ${parseError.message}`;
-              setError(errorMsg);
-              toast({
-                title: "Parse Error",
-                description: errorMsg,
-                variant: "destructive",
-              });
+              setError(null); // Don't show as fatal error
+              setWarnings([errorMsg]);
             },
           });
         }
@@ -198,21 +194,18 @@ export function CSVUpload() {
       error: (error: Error) => {
         console.error("CSV parse error:", error);
         const errorMsg = `Failed to parse CSV: ${error.message}`;
-        setError(errorMsg);
-        toast({
-          title: "Parse Error",
-          description: errorMsg,
-          variant: "destructive",
-        });
+        setError(null); // Don't show as fatal error
+        setWarnings([errorMsg]);
       },
     });
     } catch (err) {
       const errorMsg = "Failed to read file. Please try again.";
-      setError(errorMsg);
+      setError(null); // Don't show as fatal error
+      setWarnings([errorMsg]);
       toast({
-        title: "File Read Error",
+        title: "File Read Warning",
         description: errorMsg,
-        variant: "destructive",
+        variant: "default",
       });
     }
   };
@@ -221,166 +214,185 @@ export function CSVUpload() {
     const fileInput = document.getElementById("csvFile") as HTMLInputElement;
     const file = fileInput.files?.[0];
     if (!file) {
-      setError("Please select a file");
+      setWarnings(["Please select a file"]);
       return;
     }
 
     setLoading(true);
     setError(null);
+    setWarnings([]);
+    setUploadProgress(50);
 
     try {
       const fileText = await file.text();
-      let tradesToUpload: ParsedTrade[] = [];
 
       if (csvType === "broker") {
-        // Parse broker CSV
+        // Use new broker execution upload (server-side parsing)
         try {
-          tradesToUpload = parseBrokerCSV(fileText);
-        } catch (parseError) {
-          const errorMessage = parseError instanceof Error ? parseError.message : "Failed to parse broker CSV";
-          console.error("CSV Parse Error:", parseError);
-          setError(`CSV Parsing Error: ${errorMessage}. Please ensure your CSV file is a valid broker export.`);
-          setLoading(false);
-          return;
+          const result = await uploadBrokerExecutions(fileText);
+          
+          setUploadProgress(100);
+          
+          // Collect all warnings and errors
+          const allWarnings = [...result.warnings];
+          const allErrors = [...result.errors];
+          
+          if (allWarnings.length > 0) {
+            setWarnings(allWarnings);
+          }
+          
+          if (allErrors.length > 0) {
+            setError(allErrors.join("; "));
+          }
+
+          // Zero valid rows is still a successful upload (just with warnings)
+          if (result.success) {
+            const message = result.executionsCreated > 0
+              ? `Successfully uploaded ${result.executionsCreated} execution${result.executionsCreated !== 1 ? 's' : ''}.`
+              : "Upload completed (no valid executions found).";
+            
+            toast({
+              title: "Upload Complete",
+              description: message + (allWarnings.length > 0 ? ` ${allWarnings.length} warning(s).` : ""),
+              variant: allErrors.length > 0 ? "destructive" : "default",
+            });
+
+            // Clear form and refresh if successful
+            if (allErrors.length === 0) {
+              setTimeout(() => {
+                router.refresh();
+                setPreview([]);
+                fileInput.value = "";
+                setUploadProgress(0);
+                setTotalExecutions(0);
+                setWarnings([]);
+              }, 2000);
+            }
+          } else {
+            toast({
+              title: "Upload Failed",
+              description: allErrors.join("; ") || "Upload failed. Please check the CSV format.",
+              variant: "destructive",
+            });
+          }
+        } catch (uploadError) {
+          console.error("Upload error:", uploadError);
+          const errorMsg = uploadError instanceof Error ? uploadError.message : "Failed to upload executions";
+          setWarnings([errorMsg]);
+          toast({
+            title: "Upload Error",
+            description: errorMsg,
+            variant: "default",
+          });
         }
       } else {
-        // Parse custom CSV format
-        const parsePromise = new Promise<ParsedTrade[]>((resolve, reject) => {
+        // Legacy custom CSV format (still supported for backward compatibility)
+        const parsePromise = new Promise<CSVRow[]>((resolve, reject) => {
           Papa.parse<CSVRow>(fileText, {
             header: true,
             skipEmptyLines: true,
             complete: (results) => {
-              const trades: ParsedTrade[] = results.data.map((row) => ({
-                tradeDate: row.tradeDate,
-                tradeTime: row.tradeTime,
-                ticker: row.ticker,
-                assetType: row.assetType,
-                expirationDate: row.expirationDate,
-                strikePrice: row.strikePrice,
-                entryPrice: row.entryPrice,
-                exitPrice: row.exitPrice,
-                quantity: row.quantity,
-                contracts: row.contracts,
-                totalInvested: row.totalInvested,
-                totalReturn: row.totalReturn || "0",
-                percentReturn: row.percentReturn,
-                notes: row.notes,
-              }));
-              resolve(trades);
+              resolve(results.data);
             },
             error: (error: Error) => reject(error),
           });
         });
-        tradesToUpload = await parsePromise;
-        setTotalTrades(tradesToUpload.length);
-      }
-
-      if (tradesToUpload.length === 0) {
-        const errorMsg = "No valid trades found in CSV file";
-        setError(errorMsg);
-        toast({
-          title: "No Trades Found",
-          description: errorMsg,
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Limit number of trades to process
-      if (tradesToUpload.length > MAX_ROWS) {
-        const errorMsg = `File contains ${tradesToUpload.length} trades, but maximum ${MAX_ROWS} trades are allowed per upload. Please split your file.`;
-        setError(errorMsg);
-        toast({
-          title: "Too Many Trades",
-          description: errorMsg,
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      setTotalTrades(tradesToUpload.length);
-      setUploadProgress(0);
-
-      // Upload all trades
-      let successCount = 0;
-      let errorCount = 0;
-      const errors: string[] = [];
-      
-      for (let i = 0; i < tradesToUpload.length; i++) {
-        const trade = tradesToUpload[i];
-        try {
-          const formData = new FormData();
-          
-          // Ensure all required fields are present with valid values
-          formData.append("tradeDate", trade.tradeDate || new Date().toISOString().split("T")[0]);
-          if (trade.tradeTime) formData.append("tradeTime", trade.tradeTime);
-          formData.append("ticker", trade.ticker || "");
-          formData.append("assetType", trade.assetType || "Stock");
-          formData.append("entryPrice", trade.entryPrice || "0");
-          if (trade.exitPrice) formData.append("exitPrice", trade.exitPrice);
-          formData.append("quantity", trade.quantity || "0");
-          if (trade.contracts) formData.append("contracts", trade.contracts);
-          formData.append("totalInvested", trade.totalInvested || "0");
-          formData.append("totalReturn", trade.totalReturn || "0");
-          if (trade.percentReturn) formData.append("percentReturn", trade.percentReturn);
-          if (trade.status) formData.append("status", trade.status);
-          if (trade.notes) formData.append("notes", trade.notes);
-          if (trade.expirationDate) formData.append("expirationDate", trade.expirationDate);
-          if (trade.strikePrice) formData.append("strikePrice", trade.strikePrice);
-
-          // Validate required fields
-          if (!trade.ticker || !trade.tradeDate || !trade.entryPrice) {
-            throw new Error(`Missing required fields for trade: ${trade.ticker || "Unknown"}`);
-          }
-
-          await createTrade(formData);
-          successCount++;
-          
-          // Update progress
-          setUploadProgress(Math.round(((i + 1) / tradesToUpload.length) * 100));
-        } catch (err) {
-          console.error("Error creating trade:", err);
-          errorCount++;
-          const errorMsg = err instanceof Error ? err.message : "Unknown error";
-          errors.push(`${trade.ticker || "Unknown"}: ${errorMsg}`);
-          
-          // Update progress even on error
-          setUploadProgress(Math.round(((i + 1) / tradesToUpload.length) * 100));
-        }
-      }
-
-      setUploadProgress(100);
-
-      if (errorCount > 0) {
-        const errorMessage = `${successCount} trades uploaded successfully, ${errorCount} failed.${errors.length > 0 ? ` Errors: ${errors.slice(0, 3).join("; ")}${errors.length > 3 ? "..." : ""}` : ""}`;
-        setError(errorMessage);
-        toast({
-          title: "Upload Completed with Errors",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } else {
-        setError(null);
-        toast({
-          title: "Upload Successful",
-          description: `Successfully uploaded ${successCount} trade${successCount !== 1 ? 's' : ''}.`,
-          variant: "success",
-        });
         
-        // Clear form and refresh
-        setTimeout(() => {
-          router.refresh();
-          setPreview([]);
-          fileInput.value = "";
-          setUploadProgress(0);
-          setTotalTrades(0);
-        }, 2000);
+        const customRows = await parsePromise;
+        setTotalExecutions(customRows.length);
+
+        if (customRows.length === 0) {
+          setWarnings(["No valid rows found in CSV file"]);
+          setLoading(false);
+          return;
+        }
+
+        // Limit number of rows to process
+        if (customRows.length > MAX_ROWS) {
+          setWarnings([`File contains ${customRows.length} rows, but maximum ${MAX_ROWS} rows are allowed per upload. Please split your file.`]);
+          setLoading(false);
+          return;
+        }
+
+        // Upload all trades (legacy behavior)
+        let successCount = 0;
+        let errorCount = 0;
+        const errors: string[] = [];
+        
+        for (let i = 0; i < customRows.length; i++) {
+          const row = customRows[i];
+          try {
+            const formData = new FormData();
+            
+            formData.append("tradeDate", row.tradeDate || new Date().toISOString().split("T")[0]);
+            if (row.tradeTime) formData.append("tradeTime", row.tradeTime);
+            formData.append("ticker", row.ticker || "");
+            formData.append("assetType", row.assetType || "Stock");
+            formData.append("entryPrice", row.entryPrice || "0");
+            if (row.exitPrice) formData.append("exitPrice", row.exitPrice);
+            formData.append("quantity", row.quantity || "0");
+            if (row.contracts) formData.append("contracts", row.contracts);
+            formData.append("totalInvested", row.totalInvested || "0");
+            formData.append("totalReturn", row.totalReturn || "0");
+            if (row.percentReturn) formData.append("percentReturn", row.percentReturn);
+            if (row.status) formData.append("status", row.status);
+            if (row.notes) formData.append("notes", row.notes);
+            if (row.expirationDate) formData.append("expirationDate", row.expirationDate);
+            if (row.strikePrice) formData.append("strikePrice", row.strikePrice);
+
+            if (!row.ticker || !row.tradeDate || !row.entryPrice) {
+              throw new Error(`Missing required fields for trade: ${row.ticker || "Unknown"}`);
+            }
+
+            await createTrade(formData);
+            successCount++;
+            
+            setUploadProgress(Math.round(((i + 1) / customRows.length) * 100));
+          } catch (err) {
+            console.error("Error creating trade:", err);
+            errorCount++;
+            const errorMsg = err instanceof Error ? err.message : "Unknown error";
+            errors.push(`${row.ticker || "Unknown"}: ${errorMsg}`);
+            setUploadProgress(Math.round(((i + 1) / customRows.length) * 100));
+          }
+        }
+
+        setUploadProgress(100);
+
+        if (errorCount > 0) {
+          const errorMessage = `${successCount} trades uploaded successfully, ${errorCount} failed.${errors.length > 0 ? ` Errors: ${errors.slice(0, 3).join("; ")}${errors.length > 3 ? "..." : ""}` : ""}`;
+          setWarnings(errors);
+          toast({
+            title: "Upload Completed with Errors",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Upload Successful",
+            description: `Successfully uploaded ${successCount} trade${successCount !== 1 ? 's' : ''}.`,
+            variant: "success",
+          });
+          
+          setTimeout(() => {
+            router.refresh();
+            setPreview([]);
+            fileInput.value = "";
+            setUploadProgress(0);
+            setTotalExecutions(0);
+            setWarnings([]);
+          }, 2000);
+        }
       }
     } catch (err) {
       console.error("Upload error:", err);
-      setError(err instanceof Error ? err.message : "Failed to upload trades. Please check the CSV format.");
+      const errorMsg = err instanceof Error ? err.message : "Failed to upload. Please check the CSV format.";
+      setWarnings([errorMsg]);
+      toast({
+        title: "Upload Error",
+        description: errorMsg,
+        variant: "default",
+      });
     } finally {
       setLoading(false);
     }
@@ -426,7 +438,19 @@ export function CSVUpload() {
       <CardContent className="space-y-6">
         {error && (
           <div className="p-4 bg-destructive/10 border border-destructive rounded-lg text-destructive">
-            {error}
+            <p className="font-semibold mb-1">Errors:</p>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {warnings.length > 0 && (
+          <div className="p-4 bg-yellow-500/10 border border-yellow-500 rounded-lg text-yellow-700 dark:text-yellow-400">
+            <p className="font-semibold mb-2">Warnings ({warnings.length}):</p>
+            <ul className="list-disc list-inside space-y-1 text-sm max-h-40 overflow-y-auto">
+              {warnings.map((warning, idx) => (
+                <li key={idx}>{warning}</li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -489,16 +513,26 @@ export function CSVUpload() {
                 <span className="text-muted-foreground">{uploadProgress}%</span>
               </div>
               <Progress value={uploadProgress} className="h-2" />
-              {totalTrades > 0 && (
+              {totalExecutions > 0 && (
                 <p className="text-xs text-muted-foreground text-center">
-                  {Math.round((uploadProgress / 100) * totalTrades)} of {totalTrades} trades processed
+                  {csvType === "broker" 
+                    ? `${Math.round((uploadProgress / 100) * totalExecutions)} of ${totalExecutions} executions processed`
+                    : `${Math.round((uploadProgress / 100) * totalExecutions)} of ${totalExecutions} trades processed`}
                 </p>
               )}
             </div>
           )}
 
-          <Button onClick={handleUpload} disabled={loading || preview.length === 0} className="w-full">
-            {loading ? "Uploading..." : `Upload Trades${totalTrades > 0 ? ` (${totalTrades} found)` : ''}`}
+          <Button 
+            onClick={handleUpload} 
+            disabled={loading} 
+            className="w-full"
+          >
+            {loading 
+              ? "Uploading..." 
+              : csvType === "broker"
+                ? `Upload Executions${totalExecutions > 0 ? ` (${totalExecutions} found)` : ''}`
+                : `Upload Trades${totalExecutions > 0 ? ` (${totalExecutions} found)` : ''}`}
           </Button>
         </div>
       </CardContent>

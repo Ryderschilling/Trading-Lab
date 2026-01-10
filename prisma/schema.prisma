@@ -25,6 +25,7 @@ model User {
   journalEntries    JournalEntry[]
   aiConversations   AIConversationHistory[]
   rawCsvRows        RawCSVRow[]
+  brokerExecutions  BrokerExecution[]
 
   @@map("users")
 }
@@ -239,5 +240,29 @@ model RawCSVRow {
 
   @@index([userId, uploadedAt])
   @@map("raw_csv_rows")
+}
+
+model BrokerExecution {
+  id                String   @id @default(cuid())
+  userId            String
+  broker            String   // "robinhood", "tdameritrade", etc.
+  activityDate      DateTime @db.Date
+  instrument        String
+  description       String?
+  transactionType   String   // "BTO", "STC", "STO", "BTC", "BUY", "SELL"
+  quantity          Float    // Allow fractional quantities
+  price             Float
+  amount            Float    // Net amount (can be negative)
+  rawRowData        String?  // JSON string of original CSV row for reference
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, activityDate])
+  @@index([userId, broker])
+  @@index([userId, instrument])
+  @@index([userId, transactionType])
+  @@map("broker_executions")
 }
 
