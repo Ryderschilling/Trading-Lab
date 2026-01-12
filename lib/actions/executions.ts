@@ -129,7 +129,6 @@ export async function uploadBrokerExecutions(csvText: string): Promise<UploadExe
             totalInvested: aggregatedTrade.totalInvested,
             totalReturn: aggregatedTrade.totalReturn,
             percentReturn: aggregatedTrade.percentReturn,
-            status: aggregatedTrade.status,
             notes: "Imported from broker CSV",
             ...(aggregatedTrade.assetType !== "Stock" && aggregatedTrade.expirationDate && aggregatedTrade.strikePrice && {
               optionMetadata: {

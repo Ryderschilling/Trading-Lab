@@ -247,6 +247,9 @@ export function CSVUpload() {
 
           // Zero valid rows is still a successful upload (just with warnings)
           if (result.success) {
+            // Update the trade count to reflect actual trades created (not execution count)
+            setTotalTrades(result.tradesCreated);
+            
             const message = result.tradesCreated > 0
               ? `Successfully uploaded ${result.tradesCreated} trade${result.tradesCreated !== 1 ? 's' : ''}.`
               : "Upload completed (no valid trades found).";
