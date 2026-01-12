@@ -43,7 +43,7 @@ export function CSVUpload() {
   const [preview, setPreview] = useState<CSVRow[]>([]);
   const [csvType, setCsvType] = useState<"broker" | "custom">("broker");
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [totalExecutions, setTotalExecutions] = useState(0);
+  const [totalTrades, setTotalTrades] = useState(0);
 
   const isBrokerCSV = (headers: string[]): boolean => {
     // Check for standard broker CSV format columns
@@ -143,7 +143,7 @@ export function CSVUpload() {
                 totalReturn: e.amount.toString(),
                 description: e.description || "",
               } as CSVRow)));
-              setTotalExecutions(parseResult.executions.length);
+              setTotalTrades(parseResult.executions.length);
               setError(null);
             } else {
               // Zero valid rows is still valid - just show warnings
@@ -178,7 +178,7 @@ export function CSVUpload() {
                 setError(null); // Don't show as fatal error
                 setWarnings(["CSV file appears to be empty or has no valid rows."]);
               } else {
-                setTotalExecutions(fullResults.data.length);
+                setTotalTrades(fullResults.data.length);
                 setPreview(fullResults.data.slice(0, 5));
                 setError(null);
               }
@@ -227,7 +227,7 @@ export function CSVUpload() {
       const fileText = await file.text();
 
       if (csvType === "broker") {
-        // Use new broker execution upload (server-side parsing)
+        // Use broker CSV upload (server-side parsing, creates trades from executions)
         try {
           const result = await uploadBrokerExecutions(fileText);
           
@@ -247,9 +247,9 @@ export function CSVUpload() {
 
           // Zero valid rows is still a successful upload (just with warnings)
           if (result.success) {
-            const message = result.executionsCreated > 0
-              ? `Successfully uploaded ${result.executionsCreated} execution${result.executionsCreated !== 1 ? 's' : ''}.`
-              : "Upload completed (no valid executions found).";
+            const message = result.tradesCreated > 0
+              ? `Successfully uploaded ${result.tradesCreated} trade${result.tradesCreated !== 1 ? 's' : ''}.`
+              : "Upload completed (no valid trades found).";
             
             toast({
               title: "Upload Complete",
@@ -264,7 +264,7 @@ export function CSVUpload() {
                 setPreview([]);
                 fileInput.value = "";
                 setUploadProgress(0);
-                setTotalExecutions(0);
+                setTotalTrades(0);
                 setWarnings([]);
               }, 2000);
             }
@@ -277,7 +277,7 @@ export function CSVUpload() {
           }
         } catch (uploadError) {
           console.error("Upload error:", uploadError);
-          const errorMsg = uploadError instanceof Error ? uploadError.message : "Failed to upload executions";
+          const errorMsg = uploadError instanceof Error ? uploadError.message : "Failed to upload trades";
           setWarnings([errorMsg]);
           toast({
             title: "Upload Error",
@@ -299,7 +299,7 @@ export function CSVUpload() {
         });
         
         const customRows = await parsePromise;
-        setTotalExecutions(customRows.length);
+        setTotalTrades(customRows.length);
 
         if (customRows.length === 0) {
           setWarnings(["No valid rows found in CSV file"]);
@@ -379,7 +379,7 @@ export function CSVUpload() {
             setPreview([]);
             fileInput.value = "";
             setUploadProgress(0);
-            setTotalExecutions(0);
+            setTotalTrades(0);
             setWarnings([]);
           }, 2000);
         }
@@ -513,11 +513,9 @@ export function CSVUpload() {
                 <span className="text-muted-foreground">{uploadProgress}%</span>
               </div>
               <Progress value={uploadProgress} className="h-2" />
-              {totalExecutions > 0 && (
+              {totalTrades > 0 && (
                 <p className="text-xs text-muted-foreground text-center">
-                  {csvType === "broker" 
-                    ? `${Math.round((uploadProgress / 100) * totalExecutions)} of ${totalExecutions} executions processed`
-                    : `${Math.round((uploadProgress / 100) * totalExecutions)} of ${totalExecutions} trades processed`}
+                  {Math.round((uploadProgress / 100) * totalTrades)} of {totalTrades} {csvType === "broker" ? "rows" : "trades"} processed
                 </p>
               )}
             </div>
@@ -530,9 +528,7 @@ export function CSVUpload() {
           >
             {loading 
               ? "Uploading..." 
-              : csvType === "broker"
-                ? `Upload Executions${totalExecutions > 0 ? ` (${totalExecutions} found)` : ''}`
-                : `Upload Trades${totalExecutions > 0 ? ` (${totalExecutions} found)` : ''}`}
+              : `Upload Trades${totalTrades > 0 ? ` (${totalTrades} found)` : ''}`}
           </Button>
         </div>
       </CardContent>
