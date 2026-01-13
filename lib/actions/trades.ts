@@ -94,7 +94,6 @@ export async function createTrade(formData: FormData) {
       totalInvested,
       totalReturn,
       percentReturn,
-      status,
       notes: notes || null,
       ...(assetType !== "Stock" && expirationDate && strikePrice && {
         optionMetadata: {
@@ -152,7 +151,6 @@ export async function recalculateStats(userId: string, date?: Date) {
   const trades = await prisma.trade.findMany({
     where: {
       userId,
-      status: "CLOSED",
       tradeDate: {
         gte: dayStart,
         lte: dayEnd,
@@ -216,7 +214,6 @@ export async function recalculateStats(userId: string, date?: Date) {
   const monthTrades = await prisma.trade.findMany({
     where: {
       userId,
-      status: "CLOSED",
       tradeDate: {
         gte: monthStart,
         lte: monthEnd,
@@ -286,7 +283,6 @@ async function recalculateAggregatedStats(userId: string) {
   const closedTrades = await prisma.trade.findMany({
     where: { 
       userId,
-      status: "CLOSED"
     },
     include: { optionMetadata: true },
     orderBy: { tradeDate: "asc" },
@@ -664,7 +660,6 @@ export async function updateTrade(id: string, formData: FormData) {
       totalInvested,
       totalReturn,
       percentReturn,
-      status: "CLOSED", // Updated trades are always closed (manual entry)
       notes: notes || null,
     },
   });

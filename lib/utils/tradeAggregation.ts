@@ -14,7 +14,6 @@ export interface AggregatedTrade {
   totalInvested: number; // Total cost basis
   totalReturn: number; // Realized P&L (total sell proceeds - total buy cost)
   percentReturn: number;
-  status: "OPEN" | "CLOSED";
   expirationDate: Date | null;
   strikePrice: number | null;
   executions: BrokerExecution[]; // Underlying executions for drill-down
@@ -138,7 +137,7 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
   
   // First pass: group executions by position
   for (const execution of executions) {
-    const optionDetails = parseOptionDetails(execution.description, execution.instrument);
+    const optionDetails = parseOptionDetails(execution.description || null, execution.instrument);
     const positionKey = createPositionKey(
       optionDetails.ticker,
       optionDetails.assetType,
@@ -182,17 +181,17 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
       0
     );
     const totalBuyCost = openingExecutions.reduce(
-      (sum, e) => sum + Math.abs(e.amount),
+      (sum, e) => sum + Math.abs(e.amount || 0),
       0
     );
     
     // Calculate total sell quantity and proceeds
     const totalSellQuantity = closingExecutions.reduce(
-      (sum, e) => sum + Math.abs(e.quantity),
+      (sum, e) => sum + Math.abs(e.quantity || 0),
       0
     );
     const totalSellProceeds = closingExecutions.reduce(
-      (sum, e) => sum + Math.abs(e.amount),
+      (sum, e) => sum + Math.abs(e.amount || 0),
       0
     );
     
@@ -207,8 +206,10 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     let weightedEntryQuantitySum = 0;
     
     for (const exec of openingExecutions) {
-      weightedEntryPriceSum += exec.price * Math.abs(exec.quantity);
-      weightedEntryQuantitySum += Math.abs(exec.quantity);
+      if (exec.price != null) {
+        weightedEntryPriceSum += exec.price * Math.abs(exec.quantity);
+        weightedEntryQuantitySum += Math.abs(exec.quantity);
+      }
     }
     
     const avgEntryPrice = weightedEntryQuantitySum > 0
@@ -219,8 +220,10 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     let weightedExitQuantitySum = 0;
     
     for (const exec of closingExecutions) {
-      weightedExitPriceSum += exec.price * Math.abs(exec.quantity);
-      weightedExitQuantitySum += Math.abs(exec.quantity);
+      if (exec.price != null) {
+        weightedExitPriceSum += exec.price * Math.abs(exec.quantity);
+        weightedExitQuantitySum += Math.abs(exec.quantity);
+      }
     }
     
     const avgExitPrice = weightedExitQuantitySum > 0 && isClosed
@@ -271,7 +274,6 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
         totalInvested: totalBuyCost, // Total cash invested (absolute value)
         totalReturn: realizedPnL, // Realized P&L (sell proceeds - buy cost)
         percentReturn,
-        status: isClosed ? "CLOSED" : "OPEN",
         expirationDate: position.expirationDate,
         strikePrice: position.strikePrice,
         executions: position.executions,

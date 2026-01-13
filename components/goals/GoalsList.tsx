@@ -11,7 +11,6 @@ interface Goal {
   type: string;
   targetValue: number;
   currentValue: number;
-  status: string;
   timeframe: string;
 }
 
@@ -53,16 +52,13 @@ export function GoalsList({ goals }: GoalsListProps) {
     return Math.min((goal.currentValue / goal.targetValue) * 100, 100);
   }
 
-  function getStatusColor(status: string): string {
-    switch (status) {
-      case "on_track":
-        return "text-neon-green border-neon-green";
-      case "at_risk":
-        return "text-neon-orange border-neon-orange";
-      case "broken":
-        return "text-red-500 border-red-500";
-      default:
-        return "text-muted-foreground border-border";
+  function getStatusColor(progress: number): string {
+    if (progress >= 100) {
+      return "text-neon-green border-neon-green";
+    } else if (progress >= 50) {
+      return "text-neon-orange border-neon-orange";
+    } else {
+      return "text-red-500 border-red-500";
     }
   }
 
@@ -70,7 +66,7 @@ export function GoalsList({ goals }: GoalsListProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {goals.map((goal) => {
         const progress = getProgress(goal);
-        const statusColor = getStatusColor(goal.status);
+        const statusColor = getStatusColor(progress);
 
         return (
           <Card key={goal.id} className={cn("border-2", statusColor)}>
@@ -78,7 +74,7 @@ export function GoalsList({ goals }: GoalsListProps) {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{goal.name}</CardTitle>
                 <span className={cn("text-xs font-semibold px-2 py-1 rounded", statusColor)}>
-                  {goal.status.replace("_", " ").toUpperCase()}
+                  {progress >= 100 ? "COMPLETE" : progress >= 50 ? "ON TRACK" : "AT RISK"}
                 </span>
               </div>
             </CardHeader>

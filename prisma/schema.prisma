@@ -44,7 +44,6 @@ model Trade {
   totalInvested   Float
   totalReturn     Float
   percentReturn   Float
-  status          String  @default("CLOSED") // CLOSED, OPEN
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -56,7 +55,6 @@ model Trade {
   @@index([userId, tradeDate])
   @@index([userId, ticker])
   @@index([userId, assetType])
-  @@index([userId, status])
   @@map("trades")
 }
 
@@ -167,7 +165,6 @@ model Goal {
   targetValue     Float
   timeframe       String // daily, weekly, monthly
   currentValue    Float   @default(0)
-  status          String  @default("on_track") // on_track, at_risk, broken
   isActive        Boolean @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
