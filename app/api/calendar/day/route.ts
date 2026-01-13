@@ -9,18 +9,18 @@ export async function GET(request: NextRequest) {
     const dateStr = searchParams.get("date");
     
     if (!dateStr) {
-      return NextResponse.json({ error: "Date parameter is required" }, { status: 400 });
+      return NextResponse.json({ error: "Date parameter is required" },);
     }
     
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) {
-      return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid date format" }, );
     }
     
     const data = await getDayDetails(date);
     
     if (!data) {
-      return NextResponse.json({ error: "Failed to load day details" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to load day details" }, {  });
     }
     
     return NextResponse.json(data);
@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
     console.error("Error loading day details:", error);
     return NextResponse.json(
       { error: "Failed to load day details" },
-      { status: 500 }
     );
   }
 }

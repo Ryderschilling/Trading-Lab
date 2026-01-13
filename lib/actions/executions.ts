@@ -7,71 +7,6 @@ import { buildTradesFromExecutions } from "@/lib/utils/tradeAggregation";
 import { recalculateStats } from "@/lib/actions/trades";
 import { revalidatePath } from "next/cache";
 
-type ExecutionRow = {
-  order_id?: string
-  symbol: string
-  side: "BUY" | "SELL"
-  quantity: number
-  price: number
-  timestamp: string
-}
-
-type AggregatedTrade = {
-  symbol: string
-  side: "LONG" | "SHORT"
-  quantity: number
-  entryPrice: number
-  entryTime: Date
-}
-
-function aggregateExecutionsToTrades(
-  rows: ExecutionRow[]
-): AggregatedTrade[] {
-  const groups = new Map<string, ExecutionRow[]>()
-
-  for (const row of rows) {
-    const key =
-      row.order_id ??
-      `${row.symbol}-${row.side}-${row.timestamp.split("T")[0]}`
-
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(row)
-  }
-
-  const trades: AggregatedTrade[] = []
-
-  for (const executions of Array.from(groups.values())) {
-    const totalQty = executions.reduce(
-      (sum, r) => sum + r.quantity,
-      0
-    )
-
-    const weightedPrice =
-      executions.reduce(
-        (sum, r) => sum + r.price * r.quantity,
-        0
-      ) / totalQty
-
-    const entryTime = new Date(
-      Math.min(
-        ...executions.map(e =>
-          new Date(e.timestamp).getTime()
-        )
-      )
-    )
-
-    trades.push({
-      symbol: executions[0].symbol,
-      side: executions[0].side === "BUY" ? "LONG" : "SHORT",
-      quantity: totalQty,
-      entryPrice: weightedPrice,
-      entryTime
-    })
-  }
-
-  return trades
-}
-
 export interface UploadExecutionsResult {
   success: boolean;
   tradesCreated: number;
@@ -164,56 +99,31 @@ export async function uploadBrokerExecutions(csvText: string): Promise<UploadExe
       }
     }
 
-    // Convert parsed executions to ExecutionRow format
-    const parsedRows: ExecutionRow[] = parseResult.executions.map(execution => {
-      // Map transactionType to side: BTO/BTC/BUY -> BUY, STC/STO/SELL -> SELL
-      const side = (execution.transactionType === "BTO" || 
-                   execution.transactionType === "BTC" || 
-                   execution.transactionType === "BUY") ? "BUY" : "SELL";
-      
-      return {
-        symbol: execution.instrument,
-        side: side as "BUY" | "SELL",
-        quantity: execution.quantity,
-        price: execution.price,
-        timestamp: execution.activityDate,
-      };
-    });
-
     // Aggregate executions into trades
-    const aggregatedTrades = aggregateExecutionsToTrades(parsedRows);
+    const trades = buildTradesFromExecutions(storedExecutions);
 
     // Create Trade records from aggregated trades
     let tradesCreated = 0;
     const tradeDates: Date[] = [];
 
-    for (const aggregatedTrade of aggregatedTrades) {
-      try {
-        // Create trade record
-        const trade = await prisma.trade.create({
-          data: {
-            userId: user.id,
-            tradeDate: aggregatedTrade.entryTime,
-            tradeTime: null,
-            ticker: aggregatedTrade.symbol,
-            assetType: "Stock",
-            entryPrice: aggregatedTrade.entryPrice,
-            exitPrice: null,
-            quantity: Math.round(aggregatedTrade.quantity),
-            contracts: null,
-            totalInvested: aggregatedTrade.entryPrice * aggregatedTrade.quantity,
-            totalReturn: 0,
-            percentReturn: 0,
-            notes: "Imported from broker CSV",
-          },
-        });
-
-        tradesCreated++;
-        tradeDates.push(aggregatedTrade.entryTime);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : "Unknown error";
-        errors.push(`Failed to create trade for ${aggregatedTrade.symbol}: ${errorMsg}`);
-      }
+    for (const trade of trades) {
+      await prisma.trade.create({
+        data: {
+          userId: user.id,
+          tradeDate: trade.entryDate,
+          ticker: trade.ticker,
+          assetType: trade.assetType,
+          entryPrice: trade.entryPrice,
+          exitPrice: trade.exitPrice,
+          quantity: trade.quantity,
+          totalInvested: trade.entryPrice * trade.quantity,
+          totalReturn: trade.totalReturn,
+          percentReturn: trade.percentReturn,
+          notes: "Imported from broker CSV",
+        },
+      });
+      tradesCreated++;
+      tradeDates.push(trade.entryDate);
     }
 
     // Recalculate stats for all trade dates

@@ -72,7 +72,6 @@ export async function askAI(question: string) {
       type: g.type || "",
       targetValue: g.targetValue || 0,
       currentValue: g.currentValue || 0,
-      status: g.status || "",
     })),
     journalEntries: (journalEntries || []).slice(0, 10).map(j => ({
       date: j.date || null,
