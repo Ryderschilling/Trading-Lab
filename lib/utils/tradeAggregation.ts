@@ -137,7 +137,7 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
   
   // First pass: group executions by position
   for (const execution of executions) {
-    const optionDetails = parseOptionDetails(execution.description ?? null, execution.instrument);
+    const optionDetails = parseOptionDetails(execution.description, execution.instrument);
     const positionKey = createPositionKey(
       optionDetails.ticker,
       optionDetails.assetType,
