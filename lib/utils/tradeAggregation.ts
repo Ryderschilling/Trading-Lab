@@ -23,7 +23,7 @@ export interface AggregatedTrade {
  * Parse option details from description/instrument
  * Format: "SPY 12/31/2025 Put $684.00" or "SPY 12/31/2025 Call $684.00"
  */
-function parseOptionDetails(description: string | null, instrument: string): {
+function parseOptionDetails(description: string | null | undefined, instrument: string): {
   ticker: string;
   assetType: string;
   expirationDate: Date | null;
@@ -137,7 +137,7 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
   
   // First pass: group executions by position
   for (const execution of executions) {
-    const optionDetails = parseOptionDetails(execution.description || null, execution.instrument);
+    const optionDetails = parseOptionDetails(execution.description ?? null, execution.instrument);
     const positionKey = createPositionKey(
       optionDetails.ticker,
       optionDetails.assetType,
@@ -177,7 +177,7 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     
     // Calculate total buy quantity and cost
     const totalBuyQuantity = openingExecutions.reduce(
-      (sum, e) => sum + Math.abs(e.quantity),
+      (sum, e) => sum + Math.abs(e.quantity || 0),
       0
     );
     const totalBuyCost = openingExecutions.reduce(
