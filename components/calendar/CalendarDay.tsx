@@ -22,7 +22,7 @@ export function CalendarDay({ day, onClick }: CalendarDayProps) {
     <div
       onClick={onClick}
       className={cn(
-        "aspect-square p-2 rounded-lg border-2 cursor-pointer transition-all hover:scale-105",
+        "aspect-square p-2 rounded-md border border-border/20 cursor-pointer transition-all hover:scale-105",
         isProfit && "bg-neon-green/20 border-neon-green",
         isLoss && "bg-red-500/20 border-red-500",
         !hasTrades && "bg-muted border-border opacity-50"

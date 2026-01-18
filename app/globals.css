@@ -4,63 +4,48 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 142 76% 50%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 42%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142 76% 50%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 142 71% 45%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border/20;
   }
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Neon glow effects */
+/* Subtle glow effects - minimal styling */
 .neon-glow-green {
-  box-shadow: 0 0 10px rgba(0, 255, 136, 0.5),
-              0 0 20px rgba(0, 255, 136, 0.3),
-              0 0 30px rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.2);
 }
-
-.neon-glow-purple {
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5),
-              0 0 20px rgba(168, 85, 247, 0.3),
-              0 0 30px rgba(168, 85, 247, 0.2);
-}
-
-.neon-glow-orange {
-  box-shadow: 0 0 10px rgba(255, 107, 53, 0.5),
-              0 0 20px rgba(255, 107, 53, 0.3),
-              0 0 30px rgba(255, 107, 53, 0.2);
-}
-

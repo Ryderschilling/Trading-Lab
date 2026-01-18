@@ -20,7 +20,7 @@ export function Navbar() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
-    <header className="border-b border-border bg-card px-6 py-4">
+    <header className="border-b border-border/20 bg-card px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href="/dashboard" className="flex items-center space-x-2">
@@ -49,7 +49,7 @@ export function Navbar() {
               <Bell className="w-5 h-5" />
             </Button>
             {notificationsOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-lg shadow-lg z-50">
+              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border/20 rounded-md z-50">
                 <div className="p-4">
                   <h3 className="font-semibold mb-2">Notifications</h3>
                   <p className="text-sm text-muted-foreground">No new notifications</p>

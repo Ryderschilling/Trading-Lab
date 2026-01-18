@@ -31,7 +31,7 @@ export function KPICard({ title, value, format = "number", trend, tooltip, custo
   const colorClass = isPositive ? "text-neon-green" : "text-red-500";
 
   return (
-    <Card className="border-neon-green/20 hover:border-neon-green/40 transition-colors relative">
+    <Card className="border-border/20 hover:border-border/30 transition-colors relative">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
