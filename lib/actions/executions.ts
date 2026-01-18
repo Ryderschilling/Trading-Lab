@@ -2,160 +2,147 @@
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseBrokerCSV, BrokerExecution as ParsedExecution } from "@/lib/utils/brokerCSVParser";
+import { parseBrokerCSV } from "@/lib/utils/brokerCSVParser";
 import { buildTradesFromExecutions } from "@/lib/utils/tradeAggregation";
 import { recalculateStats } from "@/lib/actions/trades";
 import { revalidatePath } from "next/cache";
+import crypto from "crypto";
 
 export interface UploadExecutionsResult {
-  success: boolean;
-  tradesCreated: number;
-  warnings: string[];
-  errors: string[];
+  success: boolean;
+  tradesCreated: number;
+  warnings: string[];
+  errors: string[];
 }
 
-function getTimeOfDay(tradeDate: Date): string | null {
-  const hour = tradeDate.getHours();
-  if (hour < 12) return "Morning";
-  if (hour < 17) return "Afternoon";
-  return "Evening";
-}
+export async function uploadBrokerExecutions(
+csvText: string
+): Promise<UploadExecutionsResult> {
+  const uploadId = crypto.randomUUID();
 
-function getDayOfWeek(date: Date): string {
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  return days[date.getDay()];
-}
-
-/**
- * Upload broker CSV executions and create trades
- * 1. Stores executions in broker_executions table
- * 2. Aggregates executions into trades
- * 3. Persists trades to Trade table
- */
-export async function uploadBrokerExecutions(csvText: string): Promise<UploadExecutionsResult> {
   const user = await getCurrentUser();
-  if (!user) {
-    return {
-      success: false,
-      tradesCreated: 0,
-      warnings: [],
-      errors: ["Unauthorized"],
-    };
-  }
+  if (!user) {
+    return {
+      success: false,
+      tradesCreated: 0,
+      warnings: [],
+      errors: ["Unauthorized"],
+    };
+  }
 
-  const warnings: string[] = [];
-  const errors: string[] = [];
+  const warnings: string[] = [];
+  const errors: string[] = [];
 
-  try {
-    // Parse CSV (server-side) - returns { executions, warnings }
-    const parseResult = parseBrokerCSV(csvText);
-    warnings.push(...parseResult.warnings);
+  try {
+    // 1. Parse CSV
+    const parseResult = parseBrokerCSV(csvText);
+    warnings.push(...parseResult.warnings);
 
-    if (parseResult.executions.length === 0) {
-      // Zero valid rows is still a successful upload (just with warnings)
-      return {
-        success: true,
-        tradesCreated: 0,
-        warnings,
-        errors: [],
-      };
-    }
+    if (parseResult.executions.length === 0) {
+      return {
+        success: true,
+        tradesCreated: 0,
+        warnings,
+        errors: [],
+      };
+    }
 
-    // Store each execution
-    const storedExecutions = [];
-    for (const execution of parseResult.executions) {
-      try {
-        // Convert activityDate string to Date
-        const activityDate = new Date(execution.activityDate);
-        if (isNaN(activityDate.getTime())) {
-          warnings.push(`Skipped execution: Invalid date ${execution.activityDate}`);
-          continue;
-        }
+    // 2. Store executions FOR RECORD ONLY (not for trade logic)
+    await prisma.brokerExecution.createMany({
+      data: parseResult.executions.map(e => ({
+        userId: user.id,
+        broker: e.broker,
+        activityDate: new Date(e.activityDate),
+        instrument: e.instrument,
+        description: e.description,
+        transactionType: e.transactionType,
+        quantity: e.quantity,
+        price: e.price,
+        amount: e.amount,
+        rawRowData: e.rawRowData ? JSON.stringify(e.rawRowData) : null,
+      })),
+    });
 
-        // Store raw row data as JSON string if available
-        const rawRowDataStr = execution.rawRowData 
-          ? JSON.stringify(execution.rawRowData) 
-          : null;
+    // 3. Fetch stored executions for aggregation
+    const storedExecutions = await prisma.brokerExecution.findMany({
+      where: {
+        userId: user.id,
+        activityDate: {
+          gte: new Date(Math.min(...parseResult.executions.map(e => new Date(e.activityDate).getTime()))),
+          lte: new Date(Math.max(...parseResult.executions.map(e => new Date(e.activityDate).getTime()))),
+        },
+      },
+      orderBy: {
+        activityDate: "asc",
+      },
+    });
 
-        const storedExecution = await prisma.brokerExecution.create({
-          data: {
-            userId: user.id,
-            broker: execution.broker,
-            activityDate,
-            instrument: execution.instrument,
-            description: execution.description,
-            transactionType: execution.transactionType,
-            quantity: execution.quantity,
-            price: execution.price,
-            amount: execution.amount,
-            rawRowData: rawRowDataStr,
-          },
-        });
-
-        storedExecutions.push(storedExecution);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : "Unknown error";
-        errors.push(`Failed to store execution for ${execution.instrument} on ${execution.activityDate}: ${errorMsg}`);
-      }
-    }
-
-    // Aggregate executions into trades
+    // Ensure chronological order before aggregation (important for correct pairing)
+    storedExecutions.sort((a, b) => {
+      const aTime = new Date(a.activityDate).getTime();
+      const bTime = new Date(b.activityDate).getTime();
+      if (aTime !== bTime) return aTime - bTime;
+      // tie-breaker: use prisma id or createdAt if available
+      return a.id.localeCompare(b.id);
+    });
+  
     const trades = buildTradesFromExecutions(storedExecutions);
 
-    // Create Trade records from aggregated trades
-    let tradesCreated = 0;
-    const tradeDates: Date[] = [];
+    let tradesCreated = 0;
+    const tradeDates = new Set<string>();
 
-    for (const trade of trades) {
-      await prisma.trade.create({
-        data: {
-          userId: user.id,
-          tradeDate: trade.entryDate,
-          ticker: trade.ticker,
-          assetType: trade.assetType,
-          entryPrice: trade.entryPrice,
-          exitPrice: trade.exitPrice,
-          quantity: trade.quantity,
-          totalInvested: trade.entryPrice * trade.quantity,
-          totalReturn: trade.totalReturn,
-          percentReturn: trade.percentReturn,
-          notes: "Imported from broker CSV",
-        },
-      });
-      tradesCreated++;
-      tradeDates.push(trade.entryDate);
+    // 4. Persist ONLY aggregated trades
+    for (const trade of trades) {
+      if (!trade.exitPrice || trade.totalReturn === 0) {
+        // Skip open or invalid trades
+        continue;
+      }
+
+      await prisma.trade.create({
+        data: {
+          userId: user.id,
+          tradeDate: trade.entryDate,
+          ticker: trade.ticker,
+          assetType: trade.assetType,
+          entryPrice: trade.entryPrice,
+          exitPrice: trade.exitPrice,
+          quantity: trade.quantity,
+          totalInvested: trade.totalInvested,
+          totalReturn: trade.totalReturn,
+          percentReturn: trade.percentReturn,
+          notes: "Imported from broker CSV",
+        },
+      });
+
+      tradesCreated++;
+      tradeDates.add(trade.entryDate.toISOString().slice(0, 10));
+    }
+
+    // 5. Recalculate stats ONLY for real trade dates
+    for (const dateStr of Array.from(tradeDates)) {
+      await recalculateStats(user.id, new Date(dateStr));
     }
 
-    // Recalculate stats for all trade dates
-    for (const tradeDate of tradeDates) {
-      try {
-        await recalculateStats(user.id, tradeDate);
-      } catch (error) {
-        console.error("Error recalculating stats:", error);
-      }
-    }
+    // 6. Revalidate UI
+    revalidatePath("/trades");
+    revalidatePath("/calendar");
+    revalidatePath("/dashboard");
+    revalidatePath("/analytics");
+    revalidatePath("/goals");
 
-    // Revalidate paths to refresh UI
-    revalidatePath("/upload");
-    revalidatePath("/trades");
-    revalidatePath("/dashboard");
-    revalidatePath("/calendar");
-    revalidatePath("/analytics");
-
-    return {
-      success: true,
-      tradesCreated,
-      warnings,
-      errors,
-    };
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : "Unknown error";
-    return {
-      success: false,
-      tradesCreated: 0,
-      warnings,
-      errors: [`CSV upload failed: ${errorMsg}`],
-    };
-  }
+    return {
+      success: true,
+      tradesCreated,
+      warnings,
+      errors,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return {
+      success: false,
+      tradesCreated: 0,
+      warnings,
+      errors: [message],
+    };
+  }
 }
-

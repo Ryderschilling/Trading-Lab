@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClerkWrapper } from "@/components/providers/ClerkWrapper";
-import { ConditionalLayout } from "@/components/providers/ConditionalLayout";
+
+import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -18,16 +18,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
+    <ClerkProvider>
       <html lang="en">
         <body className={inter.className}>
-        <ClerkWrapper>
-          <ConditionalLayout>
-                {children}
-          </ConditionalLayout>
-        </ClerkWrapper>
-        <Toaster />
+          {children}
+          <Toaster />
         </body>
       </html>
+    </ClerkProvider>
   );
 }
-

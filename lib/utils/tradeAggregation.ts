@@ -23,14 +23,14 @@ export interface AggregatedTrade {
  * Parse option details from description/instrument
  * Format: "SPY 12/31/2025 Put $684.00" or "SPY 12/31/2025 Call $684.00"
  */
-function parseOptionDetails(description: string | null | undefined, instrument: string): {
+function parseOptionDetails(description: string | null | undefined, instrument: string | null): {
   ticker: string;
   assetType: string;
   expirationDate: Date | null;
   strikePrice: number | null;
 } {
   const desc = (description || "").trim();
-  const instr = instrument.trim();
+  const instr = (instrument || "").trim();
   
   // Check if it's an option (has Call or Put in description)
   const isOption = desc.toLowerCase().includes("call") || desc.toLowerCase().includes("put");
@@ -137,7 +137,7 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
   
   // First pass: group executions by position
   for (const execution of executions) {
-    const optionDetails = parseOptionDetails(execution.description, execution.instrument);
+    const optionDetails = parseOptionDetails(execution.description || null, execution.instrument);
     const positionKey = createPositionKey(
       optionDetails.ticker,
       optionDetails.assetType,

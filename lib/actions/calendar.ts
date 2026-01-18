@@ -4,18 +4,61 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function getCalendarData(year: number, month: number) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return {
-      days: [],
-      monthlyStats: null,
-      streaks: {
-        currentWinStreak: 0,
-        currentLossStreak: 0,
-        maxWinStreak: 0,
-        maxLossStreak: 0,
-      },
-    };
+    const user = await getCurrentUser();
+  
+    if (!user) {
+      return {
+        days: [],
+        monthlyStats: null,
+        streaks: {
+          currentWinStreak: 0,
+          currentLossStreak: 0,
+          maxWinStreak: 0,
+          maxLossStreak: 0,
+        },
+      };
+    }
+  
+    try {
+      const startOfMonth = startOfDay(new Date(year, month, 1));
+      const endOfMonth = endOfDay(new Date(year, month + 1, 0));
+  
+      const trades = await prisma.trade.findMany({
+        where: {
+          userId: user.id,
+          entryDate: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+        include: {
+          executions: true,
+        },
+      });
+  
+      const calendarDays = buildCalendarDays(trades, year, month);
+      const monthlyStats = calculateMonthlyStats(trades);
+      const streaks = calculateStreaks(trades);
+  
+      return {
+        days: calendarDays,
+        monthlyStats,
+        streaks,
+      };
+    } catch (err) {
+      console.error("getCalendarData failed:", err);
+  
+      return {
+        days: [],
+        monthlyStats: null,
+        streaks: {
+          currentWinStreak: 0,
+          currentLossStreak: 0,
+          maxWinStreak: 0,
+          maxLossStreak: 0,
+        },
+      };
+    }
   }
 
   const startDate = new Date(year, month - 1, 1);

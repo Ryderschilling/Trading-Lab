@@ -178,25 +178,21 @@ export function parseBrokerCSV(csvText: string): ParsedCSVResult {
       const amountStr = (row["Amount"] || row["amount"] || "").toString().trim();
       const activityDateStr = (row["Activity Date"] || row["activity date"] || row["ActivityDate"] || "").toString().trim();
 
-      // Skip rows with missing critical fields (but log as warning)
-      if (!activityDateStr) {
-        warnings.push(`Row ${index + 1}: Missing Activity Date, skipped`);
-        return;
-      }
+// Skip rows with missing critical fields (silently ignore obvious non-trade rows)
+if (!activityDateStr) {
+  // If there's no date we can't do anything — skip silently
+  return;
+}
 
-      if (!instrument || instrument.trim() === "") {
-        // This might be a fee/interest row - skip silently if it's a known non-trade code
-        if (transCode && nonTradeCodes.includes(transCode)) {
-          return; // Ignore non-trade rows silently
-        }
-        warnings.push(`Row ${index + 1}: Missing Instrument, skipped`);
-        return;
-      }
+// If there's no instrument, this is almost certainly a non-trade (transfer/fee/interest). Skip.
+if (!instrument || instrument.trim() === "") {
+  return;
+}
 
-      // Skip non-trade transaction codes (fees, dividends, interest, etc.)
-      if (transCode && nonTradeCodes.includes(transCode)) {
-        return; // Ignore non-trade rows silently
-      }
+// If this row has a known non-trade code (fees/dividends/transfers/etc.), skip silently.
+if (transCode && nonTradeCodes.includes(transCode)) {
+  return;
+}
 
       // Validate transaction type - must be a trade code
       const validTradeCodes = ["BTO", "STC", "STO", "BTC", "BUY", "SELL"];
