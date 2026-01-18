@@ -24,8 +24,8 @@ export function Navbar() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center neon-glow-green">
-              <Zap className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg border border-border/10 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-foreground" />
             </div>
             <h1 className="text-2xl font-bold">Trading Lab</h1>
           </Link>
@@ -52,7 +52,7 @@ export function Navbar() {
               <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border/20 rounded-md z-50">
                 <div className="p-4">
                   <h3 className="font-semibold mb-2">Notifications</h3>
-                  <p className="text-sm text-muted-foreground">No new notifications</p>
+                  <p className="text-sm text-foreground">No new notifications</p>
                 </div>
               </div>
             )}

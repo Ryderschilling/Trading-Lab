@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface TimePerformanceProps {
   stats: {
@@ -41,22 +41,21 @@ export function TimePerformance({ stats }: TimePerformanceProps) {
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={timeOfDayData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" tickFormatter={(value) => formatCurrency(value)} />
+              <XAxis dataKey="name" stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} />
+              <YAxis stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} tickFormatter={(value) => formatCurrency(value)} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1f2937",
-                  border: "1px solid #374151",
-                  borderRadius: "0.5rem",
+                  backgroundColor: "#fff",
+                  border: "1px solid #000",
+                  borderRadius: "0.25rem",
                 }}
                 formatter={(value: number) => formatCurrency(value)}
               />
-              <Bar dataKey="pnl" radius={[8, 8, 0, 0]}>
+              <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                 {timeOfDayData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={entry.pnl >= 0 ? "#00ff88" : "#ef4444"}
+                    fill={entry.pnl >= 0 ? "#22C55E" : "#EF4444"}
                   />
                 ))}
               </Bar>
@@ -72,22 +71,21 @@ export function TimePerformance({ stats }: TimePerformanceProps) {
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={dayOfWeekData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" tickFormatter={(value) => formatCurrency(value)} />
+              <XAxis dataKey="name" stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} />
+              <YAxis stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} tickFormatter={(value) => formatCurrency(value)} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1f2937",
-                  border: "1px solid #374151",
-                  borderRadius: "0.5rem",
+                  backgroundColor: "#fff",
+                  border: "1px solid #000",
+                  borderRadius: "0.25rem",
                 }}
                 formatter={(value: number) => formatCurrency(value)}
               />
-              <Bar dataKey="pnl" radius={[8, 8, 0, 0]}>
+              <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                 {dayOfWeekData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={entry.pnl >= 0 ? "#00ff88" : "#ef4444"}
+                    fill={entry.pnl >= 0 ? "#22C55E" : "#EF4444"}
                   />
                 ))}
               </Bar>

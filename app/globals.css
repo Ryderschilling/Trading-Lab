@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 100%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 142 71% 45%;
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 42%;
+    --muted: 0 0% 100%;
+    --muted-foreground: 0 0% 0%;
 
-    --accent: 0 0% 10%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
-    --ring: 142 71% 45%;
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 0%;
 
     --radius: 0.5rem;
   }
@@ -38,14 +38,9 @@
 
 @layer base {
   * {
-    @apply border-border/20;
+    @apply border-border/10;
   }
   body {
     @apply bg-background text-foreground;
   }
-}
-
-/* Subtle glow effects - minimal styling */
-.neon-glow-green {
-  box-shadow: 0 0 4px rgba(34, 197, 94, 0.2);
 }

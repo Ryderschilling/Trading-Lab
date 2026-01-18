@@ -33,8 +33,8 @@ export function Sidebar() {
   return (
     <div className="w-20 bg-card border-r border-border/20 flex flex-col items-center py-6 space-y-8">
       <div className="flex items-center justify-center">
-        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center neon-glow-green">
-          <Zap className="w-6 h-6 text-primary-foreground" />
+        <div className="w-10 h-10 rounded-lg border border-border/10 flex items-center justify-center">
+          <Zap className="w-6 h-6 text-foreground" />
         </div>
       </div>
       <nav className="flex-1 space-y-4">
@@ -47,8 +47,8 @@ export function Sidebar() {
               className={cn(
                 "flex flex-col items-center justify-center p-3 rounded-md transition-colors",
                 isActive
-                  ? "bg-primary text-primary-foreground neon-glow-green"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  ? "bg-foreground text-background"
+                  : "text-foreground hover:bg-background hover:border hover:border-border/10"
               )}
               title={item.name}
             >

@@ -27,28 +27,53 @@ export function KPICard({ title, value, format = "number", trend, tooltip, custo
     ? `${value.toFixed(2)}%`
     : formatNumber(value));
 
-  const isPositive = value >= 0;
-  const colorClass = isPositive ? "text-neon-green" : "text-red-500";
+  // Performance metrics that should use color
+  const isPerformanceMetric = [
+    "Total P&L",
+    "Average Trade P&L",
+    "Profit Factor",
+    "Largest Win",
+    "Largest Loss"
+  ].includes(title);
+
+  // Determine color class for performance metrics only
+  let colorClass = "";
+  if (isPerformanceMetric) {
+    if (title === "Profit Factor") {
+      // Profit factor: green if >= 1.0, red if < 1.0
+      colorClass = value >= 1.0 ? "text-[#22C55E]" : "text-[#EF4444]";
+    } else if (title === "Largest Loss") {
+      // Largest loss always red
+      colorClass = "text-[#EF4444]";
+    } else {
+      // Other performance metrics: green if positive, red if negative
+      const isPositive = value >= 0;
+      colorClass = isPositive ? "text-[#22C55E]" : "text-[#EF4444]";
+    }
+  } else {
+    // Non-performance metrics: black text
+    colorClass = "text-foreground";
+  }
 
   return (
-    <Card className="border-border/20 hover:border-border/30 transition-colors relative">
+    <Card className="border-border/10 hover:border-border/20 transition-colors relative">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-sm font-medium text-foreground">
           {title}
         </CardTitle>
         <div className="flex items-center gap-2">
-          {trend && (
+          {trend && isPerformanceMetric && (
             trend === "up" ? (
-              <TrendingUp className="h-4 w-4 text-neon-green" />
+              <TrendingUp className="h-4 w-4 text-foreground" />
             ) : (
-              <TrendingDown className="h-4 w-4 text-red-500" />
+              <TrendingDown className="h-4 w-4 text-foreground" />
             )
           )}
           {tooltip && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                  <Info className="h-3 w-3 text-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>{tooltip}</p>
@@ -66,4 +91,3 @@ export function KPICard({ title, value, format = "number", trend, tooltip, custo
     </Card>
   );
 }
-
