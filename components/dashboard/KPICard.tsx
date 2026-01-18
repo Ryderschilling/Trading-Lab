@@ -41,22 +41,22 @@ export function KPICard({ title, value, format = "number", trend, tooltip, custo
   if (isPerformanceMetric) {
     if (title === "Profit Factor") {
       // Profit factor: green if >= 1.0, red if < 1.0
-      colorClass = value >= 1.0 ? "text-[#22C55E]" : "text-[#EF4444]";
+      colorClass = value >= 1.0 ? "text-[#16C784]" : "text-[#EA3943]";
     } else if (title === "Largest Loss") {
       // Largest loss always red
-      colorClass = "text-[#EF4444]";
+      colorClass = "text-[#EA3943]";
     } else {
       // Other performance metrics: green if positive, red if negative
       const isPositive = value >= 0;
-      colorClass = isPositive ? "text-[#22C55E]" : "text-[#EF4444]";
+      colorClass = isPositive ? "text-[#16C784]" : "text-[#EA3943]";
     }
   } else {
-    // Non-performance metrics: black text
+    // Non-performance metrics: use foreground text
     colorClass = "text-foreground";
   }
 
   return (
-    <Card className="border-border/10 hover:border-border/20 transition-colors relative">
+    <Card className="border-border/30 hover:border-border/40 transition-colors relative">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
           {title}

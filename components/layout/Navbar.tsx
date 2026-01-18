@@ -20,7 +20,7 @@ export function Navbar() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
-    <header className="border-b border-border/20 bg-card px-6 py-4">
+    <header className="border-b border-border/30 bg-card px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href="/dashboard" className="flex items-center space-x-2">

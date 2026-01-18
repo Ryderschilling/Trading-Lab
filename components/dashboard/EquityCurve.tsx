@@ -44,21 +44,23 @@ export function EquityCurve({ data }: EquityCurveProps) {
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
-            <XAxis dataKey="date" stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} />
-            <YAxis stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} tickFormatter={(value) => formatCurrency(value)} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" opacity={0.3} />
+            <XAxis dataKey="date" stroke="#B3B3B3" strokeWidth={1} tick={{ fontSize: 11, fill: "#B3B3B3" }} />
+            <YAxis stroke="#B3B3B3" strokeWidth={1} tick={{ fontSize: 11, fill: "#B3B3B3" }} tickFormatter={(value) => formatCurrency(value)} />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#fff",
-                border: "1px solid #000",
-                borderRadius: "0.25rem",
+                backgroundColor: "#141414",
+                border: "1px solid #1F1F1F",
+                borderRadius: "0.5rem",
+                color: "#F2F2F2",
               }}
               formatter={(value: number) => formatCurrency(value)}
             />
             <Line
               type="monotone"
               dataKey="equity"
-              stroke="#000"
-              strokeWidth={1.5}
+              stroke="#F2F2F2"
+              strokeWidth={2}
               dot={false}
             />
           </LineChart>

@@ -19,7 +19,7 @@ const config = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
+        border: "hsl(var(--border-var))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -37,7 +37,7 @@ const config = {
           foreground: "hsl(var(--destructive-foreground))",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
+          DEFAULT: "hsl(var(--muted-var))",
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
@@ -51,12 +51,6 @@ const config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
-        },
-        neon: {
-          green: "#22C55E",
-          purple: "#a855f7",
-          orange: "#ff6b35",
-          blue: "#3b82f6",
         },
       },
       borderRadius: {

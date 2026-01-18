@@ -31,7 +31,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="w-20 bg-card border-r border-border/20 flex flex-col items-center py-6 space-y-8">
+    <div className="w-20 bg-card border-r border-border/30 flex flex-col items-center py-6 space-y-8">
       <div className="flex items-center justify-center">
         <div className="w-10 h-10 rounded-lg border border-border/10 flex items-center justify-center">
           <Zap className="w-6 h-6 text-foreground" />
@@ -45,10 +45,10 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center p-3 rounded-md transition-colors",
+                "flex flex-col items-center justify-center p-3 rounded-lg transition-colors",
                 isActive
-                  ? "bg-foreground text-background"
-                  : "text-foreground hover:bg-background hover:border hover:border-border/10"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
               )}
               title={item.name}
             >

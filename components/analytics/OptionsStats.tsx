@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface OptionsStatsProps {
   stats: {
@@ -39,19 +39,21 @@ export function OptionsStats({ stats }: OptionsStatsProps) {
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={assetData}>
-              <XAxis dataKey="name" stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} />
-              <YAxis stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} tickFormatter={(value) => formatCurrency(value)} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#B3B3B3" strokeWidth={1} tick={{ fontSize: 11, fill: "#B3B3B3" }} />
+              <YAxis stroke="#B3B3B3" strokeWidth={1} tick={{ fontSize: 11, fill: "#B3B3B3" }} tickFormatter={(value) => formatCurrency(value)} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #000",
-                  borderRadius: "0.25rem",
+                  backgroundColor: "#141414",
+                  border: "1px solid #1F1F1F",
+                  borderRadius: "0.5rem",
+                  color: "#F2F2F2",
                 }}
                 formatter={(value: number) => formatCurrency(value)}
               />
-              <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="pnl" radius={[6, 6, 0, 0]}>
                 {assetData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? "#22C55E" : "#EF4444"} />
+                  <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? "#16C784" : "#EA3943"} />
                 ))}
               </Bar>
             </BarChart>
@@ -66,21 +68,23 @@ export function OptionsStats({ stats }: OptionsStatsProps) {
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={expiryData}>
-              <XAxis dataKey="name" stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} />
-              <YAxis stroke="#000" strokeWidth={1} tick={{ fontSize: 11, fill: "#000" }} tickFormatter={(value) => formatCurrency(value)} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#B3B3B3" strokeWidth={1} tick={{ fontSize: 11, fill: "#B3B3B3" }} />
+              <YAxis stroke="#B3B3B3" strokeWidth={1} tick={{ fontSize: 11, fill: "#B3B3B3" }} tickFormatter={(value) => formatCurrency(value)} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #000",
-                  borderRadius: "0.25rem",
+                  backgroundColor: "#141414",
+                  border: "1px solid #1F1F1F",
+                  borderRadius: "0.5rem",
+                  color: "#F2F2F2",
                 }}
                 formatter={(value: number) => formatCurrency(value)}
               />
-              <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="pnl" radius={[6, 6, 0, 0]}>
                 {expiryData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={entry.pnl >= 0 ? "#22C55E" : "#EF4444"}
+                    fill={entry.pnl >= 0 ? "#16C784" : "#EA3943"}
                   />
                 ))}
               </Bar>
