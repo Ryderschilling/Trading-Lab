@@ -1,28 +1,14 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "../globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "Visual Editor - Trading Lab",
-  description: "Visual editor for Trading Lab",
-};
-
-// This layout is for the (visual) route group and bypasses the root layout
+// Nested layout for (visual) route group
+// This wraps children without html/body tags to preserve root layout with ClerkProvider
 export default function VisualLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
-        <div className="min-h-screen bg-background">
-          {children}
-        </div>
-      </body>
-    </html>
+    <div className="min-h-screen bg-background">
+      {children}
+    </div>
   );
 }
 
