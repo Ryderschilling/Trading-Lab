@@ -45,116 +45,35 @@ export function JournalEntryList({ entries }: JournalEntryListProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {entries.map((entry) => (
-        <Card key={entry.id}>
-          <CardHeader>
+        <Card key={entry.id} className="h-auto">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle>
-                {format(new Date(entry.date), "EEEE, MMMM d, yyyy")}
+              <CardTitle className="text-base">
+                {format(new Date(entry.date), "MMM d, yyyy")}
               </CardTitle>
               <Link
                 href={`/calendar?year=${new Date(entry.date).getFullYear()}&month=${new Date(entry.date).getMonth() + 1}`}
-                className="text-sm text-primary hover:underline"
+                className="text-xs text-muted-foreground hover:underline"
               >
-                View in Calendar
+                View
               </Link>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Nutrition & Stimulants */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="space-y-1 pt-0">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
               {entry.breakfast && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Breakfast</h3>
-                  <p className="text-sm text-muted-foreground">{entry.breakfast}</p>
-                </div>
+                <span className="text-muted-foreground"><span className="font-medium">Breakfast:</span> {entry.breakfast}</span>
+              )}
+              {entry.sleepDuration && (
+                <span className="text-muted-foreground"><span className="font-medium">Sleep:</span> {entry.sleepDuration}</span>
+              )}
+              {entry.tradingQuality && (
+                <span className="text-muted-foreground"><span className="font-medium">Quality:</span> {entry.tradingQuality}</span>
               )}
               {entry.caffeine && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Caffeine</h3>
-                  <p className="text-sm text-muted-foreground">{entry.caffeine}</p>
-                </div>
-              )}
-              {entry.sugar && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Sugar</h3>
-                  <p className="text-sm text-muted-foreground">{entry.sugar}</p>
-                </div>
-              )}
-              {entry.hydration && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Hydration</h3>
-                  <p className="text-sm text-muted-foreground">{entry.hydration}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Sleep & Recovery */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {entry.sleepDuration && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Sleep Duration</h3>
-                  <p className="text-sm text-muted-foreground">{entry.sleepDuration}</p>
-                </div>
-              )}
-              {entry.sleepQuality && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Sleep Quality</h3>
-                  <p className="text-sm text-muted-foreground">{entry.sleepQuality}</p>
-                </div>
-              )}
-              {entry.bedtime && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Bedtime</h3>
-                  <p className="text-sm text-muted-foreground">{entry.bedtime}</p>
-                </div>
-              )}
-              {entry.wakeFeeling && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Wake Feeling</h3>
-                  <p className="text-sm text-muted-foreground">{entry.wakeFeeling}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Trading Behavior */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {entry.tradingQuality && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Trading Quality</h3>
-                  <p className="text-sm text-muted-foreground">{entry.tradingQuality}</p>
-                </div>
-              )}
-              {entry.revengeTrading && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Revenge Trading</h3>
-                  <p className="text-sm text-muted-foreground">{entry.revengeTrading}</p>
-                </div>
-              )}
-              {entry.distractions && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Distractions</h3>
-                  <p className="text-sm text-muted-foreground">{entry.distractions}</p>
-                </div>
-              )}
-              {entry.overtrading && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Overtrading</h3>
-                  <p className="text-sm text-muted-foreground">{entry.overtrading}</p>
-                </div>
-              )}
-              {entry.timeSpentTrading && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Time Spent Trading</h3>
-                  <p className="text-sm text-muted-foreground">{entry.timeSpentTrading}</p>
-                </div>
-              )}
-              {entry.stoppedWhenShouldHave && (
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm">Stopped When Should Have</h3>
-                  <p className="text-sm text-muted-foreground">{entry.stoppedWhenShouldHave}</p>
-                </div>
+                <span className="text-muted-foreground"><span className="font-medium">Caffeine:</span> {entry.caffeine}</span>
               )}
             </div>
           </CardContent>

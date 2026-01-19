@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatPercent, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatPercent, formatNumber, cn } from "@/lib/utils";
 
 interface AdvancedStatsProps {
   stats: {
@@ -27,7 +27,10 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-neon-green">
+          <div className={cn(
+            "text-2xl font-bold",
+            stats.avgWin > 0 ? "text-[#16C784]" : stats.avgWin < 0 ? "text-[#EA3943]" : "text-foreground"
+          )}>
             {formatCurrency(stats.avgWin)}
           </div>
         </CardContent>
@@ -40,7 +43,10 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-500">
+          <div className={cn(
+            "text-2xl font-bold",
+            stats.avgLoss < 0 ? "text-[#EA3943]" : stats.avgLoss > 0 ? "text-[#16C784]" : "text-foreground"
+          )}>
             {formatCurrency(stats.avgLoss)}
           </div>
         </CardContent>
@@ -53,7 +59,10 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
+          <div className={cn(
+            "text-2xl font-bold",
+            stats.profitFactor >= 1.0 ? "text-[#16C784]" : stats.profitFactor < 1.0 ? "text-[#EA3943]" : "text-foreground"
+          )}>
             {formatNumber(stats.profitFactor)}
           </div>
         </CardContent>
@@ -66,7 +75,7 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-neon-green">
+          <div className="text-2xl font-bold text-foreground">
             {stats.bestTicker || "N/A"}
           </div>
         </CardContent>
@@ -79,7 +88,7 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-500">
+          <div className="text-2xl font-bold text-foreground">
             {stats.worstTicker || "N/A"}
           </div>
         </CardContent>
@@ -93,7 +102,10 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neon-green">
+            <div className={cn(
+              "text-2xl font-bold",
+              stats.largestWin > 0 ? "text-[#16C784]" : stats.largestWin < 0 ? "text-[#EA3943]" : "text-foreground"
+            )}>
               {formatCurrency(stats.largestWin)}
             </div>
           </CardContent>
@@ -108,7 +120,10 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">
+            <div className={cn(
+              "text-2xl font-bold",
+              stats.largestLoss < 0 ? "text-[#EA3943]" : stats.largestLoss > 0 ? "text-[#16C784]" : "text-foreground"
+            )}>
               {formatCurrency(stats.largestLoss)}
             </div>
           </CardContent>

@@ -108,7 +108,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
             <CardContent>
               <div className={cn(
                 "text-2xl font-bold",
-                monthlyStats.netPnl >= 0 ? "text-neon-green" : "text-red-500"
+                monthlyStats.netPnl > 0 ? "text-[#16C784]" : monthlyStats.netPnl < 0 ? "text-[#EA3943]" : "text-foreground"
               )}>
                 {formatCurrency(monthlyStats.netPnl)}
               </div>
@@ -122,7 +122,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-neon-green">
+              <div className="text-2xl font-bold text-foreground">
                 {monthlyStats.greenDays}
               </div>
             </CardContent>
@@ -135,7 +135,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-500">
+              <div className="text-2xl font-bold text-foreground">
                 {monthlyStats.redDays}
               </div>
             </CardContent>
@@ -165,7 +165,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neon-green">
+            <div className="text-2xl font-bold text-foreground">
               {streaks.currentWinStreak}
             </div>
           </CardContent>
@@ -178,7 +178,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">
+            <div className="text-2xl font-bold text-foreground">
               {streaks.currentLossStreak}
             </div>
           </CardContent>
@@ -191,7 +191,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neon-green">
+            <div className="text-2xl font-bold text-foreground">
               {streaks.maxWinStreak}
             </div>
           </CardContent>
@@ -204,7 +204,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">
+            <div className="text-2xl font-bold text-foreground">
               {streaks.maxLossStreak}
             </div>
           </CardContent>

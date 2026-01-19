@@ -16,16 +16,18 @@ interface CalendarDayProps {
 export function CalendarDay({ day, onClick }: CalendarDayProps) {
   const isProfit = day.netPnl > 0;
   const isLoss = day.netPnl < 0;
+  const isNeutral = day.netPnl === 0;
   const hasTrades = day.hasTrades;
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        "aspect-square p-2 rounded-md border border-border/20 cursor-pointer transition-all hover:scale-105",
-        isProfit && "bg-neon-green/20 border-neon-green",
-        isLoss && "bg-red-500/20 border-red-500",
-        !hasTrades && "bg-muted border-border opacity-50"
+        "aspect-square p-2 rounded-md border border-border/30 cursor-pointer transition-all hover:scale-105",
+        isProfit && "bg-[#16C784]/10 border-[#16C784]/30",
+        isLoss && "bg-[#EA3943]/10 border-[#EA3943]/30",
+        isNeutral && hasTrades && "bg-muted border-border/30",
+        !hasTrades && "bg-muted border-border/30 opacity-50"
       )}
     >
       <div className="flex flex-col h-full">
@@ -34,8 +36,9 @@ export function CalendarDay({ day, onClick }: CalendarDayProps) {
           <>
             <div className={cn(
               "text-xs font-bold flex-1",
-              isProfit && "text-neon-green",
-              isLoss && "text-red-500"
+              isProfit && "text-[#16C784]",
+              isLoss && "text-[#EA3943]",
+              isNeutral && "text-foreground"
             )}>
               {formatCurrency(day.netPnl)}
             </div>

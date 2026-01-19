@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency, formatPercent, formatNumber, cn } from "@/lib/utils";
 import { CreateGoalButton } from "./CreateGoalButton";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface Goal {
   id: string;
@@ -49,16 +50,37 @@ export function GoalsList({ goals }: GoalsListProps) {
 
   function getProgress(goal: Goal): number {
     if (goal.targetValue === 0) return 0;
+    // For goals where lower is better (max_daily_loss, max_trades_per_day), invert the calculation
+    if (goal.type === "max_daily_loss" || goal.type === "max_trades_per_day") {
+      if (goal.currentValue >= goal.targetValue) return 0;
+      return ((goal.targetValue - goal.currentValue) / goal.targetValue) * 100;
+    }
     return Math.min((goal.currentValue / goal.targetValue) * 100, 100);
+  }
+
+  function getTrend(goal: Goal): "up" | "down" | "neutral" {
+    // For goals where higher is better (monthly_profit, win_rate, consistency)
+    if (goal.type === "monthly_profit" || goal.type === "win_rate" || goal.type === "consistency") {
+      if (goal.currentValue > goal.targetValue * 0.9) return "up";
+      if (goal.currentValue < goal.targetValue * 0.5) return "down";
+      return goal.currentValue >= goal.targetValue * 0.7 ? "up" : "down";
+    }
+    // For goals where lower is better (max_daily_loss, max_trades_per_day)
+    if (goal.type === "max_daily_loss" || goal.type === "max_trades_per_day") {
+      if (goal.currentValue < goal.targetValue * 0.9) return "up";
+      if (goal.currentValue >= goal.targetValue) return "down";
+      return goal.currentValue < goal.targetValue ? "up" : "down";
+    }
+    return "neutral";
   }
 
   function getStatusColor(progress: number): string {
     if (progress >= 100) {
-      return "text-neon-green border-neon-green";
+      return "text-[#16C784] border-[#16C784]";
     } else if (progress >= 50) {
-      return "text-neon-orange border-neon-orange";
+      return "text-foreground border-border";
     } else {
-      return "text-red-500 border-red-500";
+      return "text-foreground border-border";
     }
   }
 
@@ -67,21 +89,31 @@ export function GoalsList({ goals }: GoalsListProps) {
       {goals.map((goal) => {
         const progress = getProgress(goal);
         const statusColor = getStatusColor(progress);
+        const trend = getTrend(goal);
 
         return (
-          <Card key={goal.id} className={cn("border-2", statusColor)}>
+          <Card key={goal.id} className={cn("border border-border/30")}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{goal.name}</CardTitle>
-                <span className={cn("text-xs font-semibold px-2 py-1 rounded", statusColor)}>
-                  {progress >= 100 ? "COMPLETE" : progress >= 50 ? "ON TRACK" : "AT RISK"}
-                </span>
+                {trend !== "neutral" && (
+                  <div className={cn(
+                    "flex items-center gap-1",
+                    trend === "up" ? "text-[#16C784]" : "text-[#EA3943]"
+                  )}>
+                    {trend === "up" ? (
+                      <TrendingUp className="h-4 w-4" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4" />
+                    )}
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Progress</span>
+                  <span className="text-muted-foreground">Current / Target</span>
                   <span className="font-semibold">
                     {formatValue(goal.currentValue, goal.type)} / {formatValue(goal.targetValue, goal.type)}
                   </span>

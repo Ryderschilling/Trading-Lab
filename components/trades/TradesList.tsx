@@ -12,6 +12,14 @@ import { Search, Filter, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { deleteAllTrades } from "@/lib/actions/trades";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Trade {
   id: string;
@@ -39,23 +47,9 @@ export function TradesList({ trades }: TradesListProps) {
   const [dateRangeStart, setDateRangeStart] = useState("");
   const [dateRangeEnd, setDateRangeEnd] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   async function handleDeleteAll() {
-    if (!confirm("⚠️ WARNING: Are you sure you want to delete ALL trades?\n\nThis action cannot be undone and will permanently delete all your trading data, including:\n- All trade records\n- All associated statistics\n- All performance data\n\nThis cannot be reversed. Are you absolutely sure?")) {
-      return;
-    }
-
-    // Double confirmation with typed confirmation
-    const confirmation = prompt("⚠️ FINAL CONFIRMATION\n\nType 'DELETE ALL TRADES' (exactly as shown) to confirm deletion:");
-    if (confirmation !== "DELETE ALL TRADES") {
-      toast({
-        title: "Cancelled",
-        description: "Deletion cancelled. Your trades are safe.",
-        variant: "default",
-      });
-      return;
-    }
-
     setDeleting(true);
     try {
       const result = await deleteAllTrades();
@@ -64,6 +58,7 @@ export function TradesList({ trades }: TradesListProps) {
         description: `Successfully deleted ${result.count} trade${result.count !== 1 ? 's' : ''}.`,
         variant: "success",
       });
+      setDeleteDialogOpen(false);
       router.refresh();
     } catch (err) {
       toast({
@@ -136,7 +131,7 @@ export function TradesList({ trades }: TradesListProps) {
         <div className="flex justify-end">
           <Button
             variant="destructive"
-            onClick={handleDeleteAll}
+            onClick={() => setDeleteDialogOpen(true)}
             disabled={deleting}
             className="flex items-center gap-2"
           >
@@ -145,6 +140,34 @@ export function TradesList({ trades }: TradesListProps) {
           </Button>
         </div>
       )}
+
+      {/* Delete All Trades Modal */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete all trades?</DialogTitle>
+            <DialogDescription>
+              This action permanently deletes all trade history and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAll}
+              disabled={deleting}
+            >
+              Delete all trades
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <Card>
