@@ -197,7 +197,7 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     
     // Determine if position is open or closed
     const openQuantity = totalBuyQuantity - totalSellQuantity;
-    const isClosed = openQuantity <= 0 && totalSellQuantity > 0;
+    const isClosed = totalBuyQuantity > 0 && totalSellQuantity >= totalBuyQuantity;
     
     // Calculate average prices per unit (per share for stocks, per contract for options)
     // Use the price field from executions, weighted by quantity
@@ -236,7 +236,8 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     // totalSellProceeds is the absolute value of sell amounts (cash inflow)
     // P&L = what we received - what we paid
     const realizedPnL = isClosed 
-      ? totalSellProceeds - totalBuyCost
+      ? closingExecutions.reduce((sum, e) => sum + Math.abs(e.amount), 0)
+        - openingExecutions.reduce((sum, e) => sum + Math.abs(e.amount), 0)
       : 0;
     
     const percentReturn = totalBuyCost > 0 && isClosed
@@ -255,8 +256,8 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     // Determine closed quantity (min of buy and sell quantities for closed trades)
     // For closed trades, use the closed quantity; for open, use the current open quantity
     const closedQuantity = isClosed 
-      ? Math.min(totalBuyQuantity, totalSellQuantity)
-      : totalBuyQuantity;
+      ? totalBuyQuantity
+      : openQuantity;
     
     // Only create trade if there are valid executions and we bought something
     if (position.executions.length > 0 && totalBuyQuantity > 0) {
