@@ -748,8 +748,57 @@ export async function deleteAllTrades() {
     where: { userId: user.id },
   });
 
-  // Recalculate stats (will reset to empty)
-  await recalculateStats(user.id);
+  // Delete all broker executions to prevent re-aggregation
+  await prisma.brokerExecution.deleteMany({
+    where: { userId: user.id },
+  });
+
+  // Delete all raw CSV rows
+  await prisma.rawCSVRow.deleteMany({
+    where: { userId: user.id },
+  });
+
+  // Delete all daily performance records
+  await prisma.dailyPerformance.deleteMany({
+    where: { userId: user.id },
+  });
+
+  // Delete all monthly performance records
+  await prisma.monthlyPerformance.deleteMany({
+    where: { userId: user.id },
+  });
+
+  // Reset aggregated stats to empty state
+  await prisma.aggregatedStats.deleteMany({
+    where: { userId: user.id },
+  });
+
+  await prisma.aggregatedStats.create({
+    data: {
+      userId: user.id,
+      totalPnl: 0,
+      totalTrades: 0,
+      winRate: 0,
+      avgWin: 0,
+      avgLoss: 0,
+      avgTradePnl: 0,
+      profitFactor: 0,
+      callsPnl: 0,
+      putsPnl: 0,
+      stocksPnl: 0,
+      zeroDTEPnl: 0,
+      weeklyPnl: 0,
+      monthlyPnl: 0,
+      morningPnl: 0,
+      afternoonPnl: 0,
+      eveningPnl: 0,
+      mondayPnl: 0,
+      tuesdayPnl: 0,
+      wednesdayPnl: 0,
+      thursdayPnl: 0,
+      fridayPnl: 0,
+    },
+  });
 
   revalidatePath("/dashboard");
   revalidatePath("/calendar");

@@ -33,21 +33,49 @@ csvText: string
   const warnings: string[] = [];
   const errors: string[] = [];
 
-  try {
-    // 1. Parse CSV
-    const parseResult = parseBrokerCSV(csvText);
-    warnings.push(...parseResult.warnings);
+  try {
+    // 1. Parse CSV
+    const parseResult = parseBrokerCSV(csvText);
+    warnings.push(...parseResult.warnings);
 
-    if (parseResult.executions.length === 0) {
-      return {
-        success: true,
-        tradesCreated: 0,
-        warnings,
-        errors: [],
-      };
-    }
+    if (parseResult.executions.length === 0) {
+      return {
+        success: true,
+        tradesCreated: 0,
+        warnings,
+        errors: [],
+      };
+    }
 
-    // 2. Store executions FOR RECORD ONLY (not for trade logic)
+    // 2. DELETE ALL EXISTING TRADES AND EXECUTIONS BEFORE IMPORT
+    // This ensures CSV import REPLACES instead of APPENDS
+    await prisma.trade.deleteMany({
+      where: { userId: user.id },
+    });
+
+    await prisma.brokerExecution.deleteMany({
+      where: { userId: user.id },
+    });
+
+    await prisma.rawCSVRow.deleteMany({
+      where: { userId: user.id },
+    });
+
+    // Clear performance records (they will be recalculated from new trades)
+    await prisma.dailyPerformance.deleteMany({
+      where: { userId: user.id },
+    });
+
+    await prisma.monthlyPerformance.deleteMany({
+      where: { userId: user.id },
+    });
+
+    // Reset aggregated stats
+    await prisma.aggregatedStats.deleteMany({
+      where: { userId: user.id },
+    });
+
+    // 3. Store NEW executions from CSV
     await prisma.brokerExecution.createMany({
       data: parseResult.executions.map(e => ({
         userId: user.id,
@@ -63,14 +91,10 @@ csvText: string
       })),
     });
 
-    // 3. Fetch stored executions for aggregation
+    // 4. Fetch ONLY the newly stored executions for aggregation
     const storedExecutions = await prisma.brokerExecution.findMany({
       where: {
         userId: user.id,
-        activityDate: {
-          gte: new Date(Math.min(...parseResult.executions.map(e => new Date(e.activityDate).getTime()))),
-          lte: new Date(Math.max(...parseResult.executions.map(e => new Date(e.activityDate).getTime()))),
-        },
       },
       orderBy: {
         activityDate: "asc",
@@ -88,42 +112,47 @@ csvText: string
   
     const trades = buildTradesFromExecutions(storedExecutions);
 
-    let tradesCreated = 0;
-    const tradeDates = new Set<string>();
+    let tradesCreated = 0;
+    const tradeDates = new Set<string>();
 
-    // 4. Persist ONLY aggregated trades
-    for (const trade of trades) {
-      if (!trade.exitPrice || trade.totalReturn === 0) {
-        // Skip open or invalid trades
-        continue;
-      }
+    // 5. Persist ONLY aggregated trades from NEW executions
+    for (const trade of trades) {
+      if (!trade.exitPrice || trade.totalReturn === 0) {
+        // Skip open or invalid trades
+        continue;
+      }
 
-      await prisma.trade.create({
-        data: {
-          userId: user.id,
-          tradeDate: trade.entryDate,
-          ticker: trade.ticker,
-          assetType: trade.assetType,
-          entryPrice: trade.entryPrice,
-          exitPrice: trade.exitPrice,
-          quantity: trade.quantity,
-          totalInvested: trade.totalInvested,
-          totalReturn: trade.totalReturn,
-          percentReturn: trade.percentReturn,
-          notes: "Imported from broker CSV",
-        },
-      });
+      await prisma.trade.create({
+        data: {
+          userId: user.id,
+          tradeDate: trade.entryDate,
+          ticker: trade.ticker,
+          assetType: trade.assetType,
+          entryPrice: trade.entryPrice,
+          exitPrice: trade.exitPrice,
+          quantity: trade.quantity,
+          totalInvested: trade.totalInvested,
+          totalReturn: trade.totalReturn,
+          percentReturn: trade.percentReturn,
+          notes: "Imported from broker CSV",
+        },
+      });
 
-      tradesCreated++;
-      tradeDates.add(trade.entryDate.toISOString().slice(0, 10));
-    }
-
-    // 5. Recalculate stats ONLY for real trade dates
-    for (const dateStr of Array.from(tradeDates)) {
-      await recalculateStats(user.id, new Date(dateStr));
+      tradesCreated++;
+      tradeDates.add(trade.entryDate.toISOString().slice(0, 10));
     }
 
-    // 6. Revalidate UI
+    // 6. Recalculate stats for all new trade dates
+    if (tradeDates.size > 0) {
+      for (const dateStr of Array.from(tradeDates)) {
+        await recalculateStats(user.id, new Date(dateStr));
+      }
+    } else {
+      // If no trades created, ensure stats are reset
+      await recalculateStats(user.id);
+    }
+
+    // 7. Revalidate UI
     revalidatePath("/trades");
     revalidatePath("/calendar");
     revalidatePath("/dashboard");
