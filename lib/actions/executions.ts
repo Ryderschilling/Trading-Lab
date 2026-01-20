@@ -76,19 +76,26 @@ csvText: string
     });
 
     // 3. Store NEW executions from CSV
+    // Parse dates locally to avoid timezone shifting (activityDate is YYYY-MM-DD string)
     await prisma.brokerExecution.createMany({
-      data: parseResult.executions.map(e => ({
-        userId: user.id,
-        broker: e.broker,
-        activityDate: new Date(e.activityDate),
-        instrument: e.instrument,
-        description: e.description,
-        transactionType: e.transactionType,
-        quantity: e.quantity,
-        price: e.price,
-        amount: e.amount,
-        rawRowData: e.rawRowData ? JSON.stringify(e.rawRowData) : null,
-      })),
+      data: parseResult.executions.map(e => {
+        // Parse YYYY-MM-DD format locally
+        const [year, month, day] = e.activityDate.split("-").map(Number);
+        const activityDate = new Date(year, month - 1, day);
+        
+        return {
+          userId: user.id,
+          broker: e.broker,
+          activityDate,
+          instrument: e.instrument,
+          description: e.description,
+          transactionType: e.transactionType,
+          quantity: e.quantity,
+          price: e.price,
+          amount: e.amount,
+          rawRowData: e.rawRowData ? JSON.stringify(e.rawRowData) : null,
+        };
+      }),
     });
 
     // 4. Fetch ONLY the newly stored executions for aggregation

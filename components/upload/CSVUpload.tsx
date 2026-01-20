@@ -260,10 +260,10 @@ export function CSVUpload() {
               variant: allErrors.length > 0 ? "destructive" : "default",
             });
 
-            // Clear form and refresh if successful
+            // Clear form and navigate if successful
             if (allErrors.length === 0) {
               setTimeout(() => {
-                router.refresh();
+                router.push("/dashboard");
                 setPreview([]);
                 fileInput.value = "";
                 setUploadProgress(0);
@@ -378,7 +378,7 @@ export function CSVUpload() {
           });
           
           setTimeout(() => {
-            router.refresh();
+            router.push("/dashboard");
             setPreview([]);
             fileInput.value = "";
             setUploadProgress(0);

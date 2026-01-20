@@ -4,6 +4,31 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+/**
+ * Parse date string locally to avoid timezone shifting
+ * Supports YYYY-MM-DD format and other common formats
+ */
+function parseLocalDate(dateStr: string): Date {
+  // Try YYYY-MM-DD format first
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+  
+  // Try parsing with time component to avoid timezone shift, then extract local date
+  const parsed = new Date(dateStr + " 12:00:00");
+  if (!isNaN(parsed.getTime())) {
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  }
+  
+  // Fallback to direct parsing
+  const fallback = new Date(dateStr);
+  if (isNaN(fallback.getTime())) {
+    throw new Error(`Invalid date format: ${dateStr}`);
+  }
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
+}
+
 export async function createTrade(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
@@ -14,10 +39,7 @@ export async function createTrade(formData: FormData) {
     throw new Error("Trade date is required");
   }
   
-  const tradeDate = new Date(tradeDateStr);
-  if (isNaN(tradeDate.getTime())) {
-    throw new Error(`Invalid trade date: ${tradeDateStr}`);
-  }
+  const tradeDate = parseLocalDate(tradeDateStr);
 
   const ticker = (formData.get("ticker") as string)?.trim();
   if (!ticker) {
@@ -59,8 +81,9 @@ export async function createTrade(formData: FormData) {
   let expirationDate: Date | null = null;
   const expirationDateStr = formData.get("expirationDate") as string;
   if (expirationDateStr) {
-    expirationDate = new Date(expirationDateStr);
-    if (isNaN(expirationDate.getTime())) {
+    try {
+      expirationDate = parseLocalDate(expirationDateStr);
+    } catch {
       expirationDate = null; // Invalid date, ignore it
     }
   }
@@ -587,10 +610,7 @@ export async function updateTrade(id: string, formData: FormData) {
     throw new Error("Trade date is required");
   }
   
-  const tradeDate = new Date(tradeDateStr);
-  if (isNaN(tradeDate.getTime())) {
-    throw new Error(`Invalid trade date: ${tradeDateStr}`);
-  }
+  const tradeDate = parseLocalDate(tradeDateStr);
 
   const ticker = (formData.get("ticker") as string)?.trim();
   if (!ticker) {
@@ -632,8 +652,9 @@ export async function updateTrade(id: string, formData: FormData) {
   let expirationDate: Date | null = null;
   const expirationDateStr = formData.get("expirationDate") as string;
   if (expirationDateStr) {
-    expirationDate = new Date(expirationDateStr);
-    if (isNaN(expirationDate.getTime())) {
+    try {
+      expirationDate = parseLocalDate(expirationDateStr);
+    } catch {
       expirationDate = null;
     }
   }
