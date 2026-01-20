@@ -47,35 +47,27 @@ csvText: string
       };
     }
 
-    // 2. DELETE ALL EXISTING TRADES AND EXECUTIONS BEFORE IMPORT
-    // This ensures CSV import REPLACES instead of APPENDS
-    await prisma.trade.deleteMany({
+    // 2. Fetch existing trades for deduplication
+    const existingTrades = await prisma.trade.findMany({
       where: { userId: user.id },
+      select: {
+        tradeDate: true,
+        ticker: true,
+        quantity: true,
+        entryPrice: true,
+        exitPrice: true,
+      },
     });
 
-    await prisma.brokerExecution.deleteMany({
-      where: { userId: user.id },
-    });
+    // Create a set of existing trade keys for fast lookup
+    const existingTradeKeys = new Set(
+      existingTrades.map(t => {
+        const dateStr = new Date(t.tradeDate).toISOString().slice(0, 10);
+        return `${dateStr}|${t.ticker}|${t.quantity}|${t.entryPrice}|${t.exitPrice || 0}`;
+      })
+    );
 
-    await prisma.rawCSVRow.deleteMany({
-      where: { userId: user.id },
-    });
-
-    // Clear performance records (they will be recalculated from new trades)
-    await prisma.dailyPerformance.deleteMany({
-      where: { userId: user.id },
-    });
-
-    await prisma.monthlyPerformance.deleteMany({
-      where: { userId: user.id },
-    });
-
-    // Reset aggregated stats
-    await prisma.aggregatedStats.deleteMany({
-      where: { userId: user.id },
-    });
-
-    // 3. Store NEW executions from CSV
+    // 3. Store NEW executions from CSV (append, don't delete)
     // Parse dates locally to avoid timezone shifting (activityDate is YYYY-MM-DD string)
     await prisma.brokerExecution.createMany({
       data: parseResult.executions.map(e => {
@@ -85,6 +77,7 @@ csvText: string
         
         return {
           userId: user.id,
+          uploadId,
           broker: e.broker,
           activityDate,
           instrument: e.instrument,
@@ -98,7 +91,7 @@ csvText: string
       }),
     });
 
-    // 4. Fetch ONLY the newly stored executions for aggregation
+    // 4. Fetch ALL executions (existing + new) for aggregation
     const storedExecutions = await prisma.brokerExecution.findMany({
       where: {
         userId: user.id,
@@ -122,10 +115,19 @@ csvText: string
     let tradesCreated = 0;
     const tradeDates = new Set<string>();
 
-    // 5. Persist ONLY aggregated trades from NEW executions
+    // 5. Persist aggregated trades, skipping duplicates
     for (const trade of trades) {
       if (!trade.exitPrice || trade.totalReturn === 0) {
         // Skip open or invalid trades
+        continue;
+      }
+
+      // Check for duplicates before inserting
+      const dateStr = trade.entryDate.toISOString().slice(0, 10);
+      const tradeKey = `${dateStr}|${trade.ticker}|${trade.quantity}|${trade.entryPrice}|${trade.exitPrice || 0}`;
+      
+      if (existingTradeKeys.has(tradeKey)) {
+        // Skip duplicate trade
         continue;
       }
 
@@ -146,18 +148,20 @@ csvText: string
       });
 
       tradesCreated++;
-      tradeDates.add(trade.entryDate.toISOString().slice(0, 10));
+      tradeDates.add(dateStr);
     }
 
-    // 6. Recalculate stats for all new trade dates
+    // 6. Recalculate stats for all affected dates (new trades only)
     if (tradeDates.size > 0) {
       for (const dateStr of Array.from(tradeDates)) {
-        await recalculateStats(user.id, new Date(dateStr));
+        const [year, month, day] = dateStr.split("-").map(Number);
+        await recalculateStats(user.id, new Date(year, month - 1, day));
       }
-    } else {
-      // If no trades created, ensure stats are reset
-      await recalculateStats(user.id);
     }
+    
+    // Also recalculate aggregated stats
+    const { recalculateAggregatedStats } = await import("@/lib/actions/trades");
+    await recalculateAggregatedStats(user.id);
 
     // 7. Revalidate UI
     revalidatePath("/trades");

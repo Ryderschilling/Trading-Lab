@@ -33,8 +33,7 @@ model User {
 model Trade {
   id              String   @id @default(cuid())
   userId          String
-  tradeDate       DateTime
-  tradeTime       String?
+  tradeDate       DateTime @db.Date
   ticker          String
   assetType       String // Stock, Call, Put
   entryPrice      Float
@@ -61,9 +60,8 @@ model Trade {
 model OptionMetadata {
   id              String   @id @default(cuid())
   tradeId         String   @unique
-  expirationDate  DateTime?
+  expirationDate  DateTime? @db.Date
   strikePrice     Float?
-  timeOfDay       String? // Morning, Afternoon, Evening
   dayOfWeek       String? // Monday, Tuesday, etc.
   is0DTE          Boolean  @default(false)
   isWeekly        Boolean  @default(false)
@@ -140,9 +138,6 @@ model AggregatedStats {
   zeroDTEPnl        Float    @default(0)
   weeklyPnl         Float    @default(0)
   monthlyPnl        Float    @default(0)
-  morningPnl        Float    @default(0)
-  afternoonPnl      Float    @default(0)
-  eveningPnl        Float    @default(0)
   mondayPnl         Float    @default(0)
   tuesdayPnl        Float    @default(0)
   wednesdayPnl      Float    @default(0)
@@ -242,6 +237,7 @@ model RawCSVRow {
 model BrokerExecution {
   id                String   @id @default(cuid())
   userId            String
+  uploadId          String 
   broker            String   // "robinhood", "tdameritrade", etc.
   activityDate      DateTime @db.Date
   instrument        String

@@ -20,7 +20,6 @@ interface TradeDetailProps {
     ticker: string;
     assetType: string;
     tradeDate: Date;
-    tradeTime: string | null;
     entryPrice: number;
     exitPrice: number | null;
     quantity: number;
@@ -44,10 +43,9 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
   
   // Form state
   const [assetType, setAssetType] = useState(initialTrade.assetType);
-  const [entryDate, setEntryDate] = useState(
+  const [tradeDate, setTradeDate] = useState(
     format(new Date(initialTrade.tradeDate), "yyyy-MM-dd")
   );
-  const [entryTime, setEntryTime] = useState(initialTrade.tradeTime || "");
   const [ticker, setTicker] = useState(initialTrade.ticker);
   const [strikePrice, setStrikePrice] = useState(
     initialTrade.optionMetadata?.strikePrice?.toString() || ""
@@ -92,8 +90,7 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("tradeDate", entryDate);
-      if (entryTime) formData.append("tradeTime", entryTime);
+      formData.append("tradeDate", tradeDate);
       formData.append("ticker", ticker.toUpperCase());
       formData.append("assetType", assetType);
       formData.append("entryPrice", entryPrice);
@@ -103,7 +100,6 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
         formData.append("quantity", contracts);
         formData.append("contracts", contracts);
         if (strikePrice) formData.append("strikePrice", strikePrice);
-        if (entryDate) formData.append("expirationDate", entryDate);
       } else {
         formData.append("quantity", quantity);
       }
@@ -203,13 +199,8 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
               </div>
 
               <div className="space-y-2">
-                <Label>Entry Date *</Label>
-                <Input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} required />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Entry Time</Label>
-                <Input type="time" value={entryTime} onChange={(e) => setEntryTime(e.target.value)} />
+                <Label>Trade Date *</Label>
+                <Input type="date" value={tradeDate} onChange={(e) => setTradeDate(e.target.value)} required />
               </div>
 
               <div className="space-y-2">
@@ -348,7 +339,6 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
               <Label className="text-muted-foreground">Date</Label>
               <p className="text-lg font-semibold">
                 {format(new Date(initialTrade.tradeDate), "MMM dd, yyyy")}
-                {initialTrade.tradeTime && ` at ${initialTrade.tradeTime}`}
               </p>
             </div>
 

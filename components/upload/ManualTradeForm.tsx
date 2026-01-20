@@ -17,10 +17,7 @@ export function ManualTradeForm() {
   const [assetType, setAssetType] = useState<"Stock" | "Call" | "Put">("Stock");
   
   // Form state
-  const [entryDate, setEntryDate] = useState("");
-  const [entryTime, setEntryTime] = useState("");
-  const [exitDate, setExitDate] = useState("");
-  const [exitTime, setExitTime] = useState("");
+  const [tradeDate, setTradeDate] = useState("");
   const [ticker, setTicker] = useState("");
   const [strikePrice, setStrikePrice] = useState("");
   const [entryPrice, setEntryPrice] = useState("");
@@ -66,16 +63,9 @@ export function ManualTradeForm() {
     try {
       const formData = new FormData();
       
-      // Use entry date/time as tradeDate
-      const tradeDate = entryDate || new Date().toISOString().split("T")[0];
-      formData.append("tradeDate", tradeDate);
-      if (entryTime) formData.append("tradeTime", entryTime);
-      
-      // For exit date/time, we'll store in a separate field or use notes temporarily
-      // Since schema doesn't have exitDate/exitTime, we'll add them to notes for now
-      if (exitDate || exitTime) {
-        formData.append("notes", `Exit: ${exitDate || "N/A"} ${exitTime || ""}`.trim());
-      }
+      // Use tradeDate (date-only)
+      const finalTradeDate = tradeDate || new Date().toISOString().split("T")[0];
+      formData.append("tradeDate", finalTradeDate);
       
       formData.append("ticker", ticker.toUpperCase());
       formData.append("assetType", assetType);
@@ -86,8 +76,6 @@ export function ManualTradeForm() {
         formData.append("quantity", contracts); // Use contracts as quantity for options
         formData.append("contracts", contracts);
         if (strikePrice) formData.append("strikePrice", strikePrice);
-        // For options, we need expiration date - we'll use exit date as expiration for now
-        if (exitDate) formData.append("expirationDate", exitDate);
       } else {
         formData.append("quantity", quantity);
       }
@@ -116,10 +104,7 @@ export function ManualTradeForm() {
         });
         // do not rethrow — we handled the error and will let the UI continue
       }
-      setEntryDate("");
-      setEntryTime("");
-      setExitDate("");
-      setExitTime("");
+      setTradeDate("");
       setTicker("");
       setStrikePrice("");
       setEntryPrice("");
@@ -161,48 +146,15 @@ export function ManualTradeForm() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Entry Date */}
+            {/* Trade Date */}
             <div className="space-y-2">
-              <Label htmlFor="entryDate">Entry Date *</Label>
+              <Label htmlFor="tradeDate">Trade Date *</Label>
               <Input 
-                id="entryDate" 
+                id="tradeDate" 
                 type="date" 
-                value={entryDate}
-                onChange={(e) => setEntryDate(e.target.value)}
+                value={tradeDate}
+                onChange={(e) => setTradeDate(e.target.value)}
                 required 
-              />
-            </div>
-
-            {/* Entry Time */}
-            <div className="space-y-2">
-              <Label htmlFor="entryTime">Entry Time</Label>
-              <Input 
-                id="entryTime" 
-                type="time" 
-                value={entryTime}
-                onChange={(e) => setEntryTime(e.target.value)}
-              />
-            </div>
-
-            {/* Exit Date */}
-            <div className="space-y-2">
-              <Label htmlFor="exitDate">Exit Date</Label>
-              <Input 
-                id="exitDate" 
-                type="date" 
-                value={exitDate}
-                onChange={(e) => setExitDate(e.target.value)}
-              />
-            </div>
-
-            {/* Exit Time */}
-            <div className="space-y-2">
-              <Label htmlFor="exitTime">Exit Time</Label>
-              <Input 
-                id="exitTime" 
-                type="time" 
-                value={exitTime}
-                onChange={(e) => setExitTime(e.target.value)}
               />
             </div>
 

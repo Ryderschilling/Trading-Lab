@@ -71,7 +71,6 @@ export async function createTrade(formData: FormData) {
     throw new Error(`Invalid total return: ${totalReturnStr}`);
   }
 
-  const tradeTime = formData.get("tradeTime") as string | null;
   const exitPrice = formData.get("exitPrice") ? parseFloat(formData.get("exitPrice") as string) : null;
   const contracts = formData.get("contracts") ? parseInt(formData.get("contracts") as string) : null;
   const percentReturnStr = formData.get("percentReturn") as string;
@@ -91,13 +90,8 @@ export async function createTrade(formData: FormData) {
   const strikePriceStr = formData.get("strikePrice") as string;
   const strikePrice = strikePriceStr ? parseFloat(strikePriceStr) : null;
 
-  // Combine date and time if time is provided
-  let finalDate = tradeDate;
-  if (tradeTime) {
-    const [hours, minutes] = tradeTime.split(":");
-    finalDate = new Date(tradeDate);
-    finalDate.setHours(parseInt(hours), parseInt(minutes));
-  }
+  // Use tradeDate as-is (date-only)
+  const finalDate = tradeDate;
 
   // Get status from form (default to CLOSED for manual entries, or from CSV)
   const statusStr = formData.get("status") as string | null;
@@ -107,7 +101,6 @@ export async function createTrade(formData: FormData) {
     data: {
       userId: user.id,
       tradeDate: finalDate,
-      tradeTime: tradeTime || null,
       ticker: ticker.toUpperCase(),
       assetType,
       entryPrice,
@@ -126,7 +119,6 @@ export async function createTrade(formData: FormData) {
             is0DTE: expirationDate && new Date(expirationDate.getTime() - tradeDate.getTime()).getDate() === 0,
             isWeekly: false, // Calculate based on expiration
             isMonthly: false, // Calculate based on expiration
-            timeOfDay: getTimeOfDay(tradeTime),
             dayOfWeek: getDayOfWeek(finalDate),
           },
         },
@@ -146,14 +138,6 @@ export async function createTrade(formData: FormData) {
   revalidatePath("/goals");
 
   return trade;
-}
-
-function getTimeOfDay(time: string | null): string | null {
-  if (!time) return null;
-  const hour = parseInt(time.split(":")[0]);
-  if (hour < 12) return "Morning";
-  if (hour < 17) return "Afternoon";
-  return "Evening";
 }
 
 function getDayOfWeek(date: Date): string {
@@ -301,7 +285,7 @@ export async function recalculateStats(userId: string, date?: Date) {
   await recalculateAggregatedStats(userId);
 }
 
-async function recalculateAggregatedStats(userId: string) {
+export async function recalculateAggregatedStats(userId: string) {
   // Get all trades first
   const allTrades = await prisma.trade.findMany({
     where: { 
@@ -336,9 +320,6 @@ async function recalculateAggregatedStats(userId: string) {
         zeroDTEPnl: 0,
         weeklyPnl: 0,
         monthlyPnl: 0,
-        morningPnl: 0,
-        afternoonPnl: 0,
-        eveningPnl: 0,
         mondayPnl: 0,
         tuesdayPnl: 0,
         wednesdayPnl: 0,
@@ -363,9 +344,6 @@ async function recalculateAggregatedStats(userId: string) {
         zeroDTEPnl: 0,
         weeklyPnl: 0,
         monthlyPnl: 0,
-        morningPnl: 0,
-        afternoonPnl: 0,
-        eveningPnl: 0,
         mondayPnl: 0,
         tuesdayPnl: 0,
         wednesdayPnl: 0,
@@ -417,14 +395,6 @@ async function recalculateAggregatedStats(userId: string) {
   const weeklyPnl = weekly.reduce((sum, t) => sum + t.totalReturn, 0);
   const monthlyPnl = monthly.reduce((sum, t) => sum + t.totalReturn, 0);
 
-  // Time-of-day stats (using Amount-based P/L only)
-  const morning = closedTrades.filter(t => t.optionMetadata?.timeOfDay === "Morning");
-  const afternoon = closedTrades.filter(t => t.optionMetadata?.timeOfDay === "Afternoon");
-  const evening = closedTrades.filter(t => t.optionMetadata?.timeOfDay === "Evening");
-  const morningPnl = morning.reduce((sum, t) => sum + t.totalReturn, 0);
-  const afternoonPnl = afternoon.reduce((sum, t) => sum + t.totalReturn, 0);
-  const eveningPnl = evening.reduce((sum, t) => sum + t.totalReturn, 0);
-
   // Day-of-week stats (using Amount-based P/L only)
   const monday = closedTrades.filter(t => t.optionMetadata?.dayOfWeek === "Monday");
   const tuesday = closedTrades.filter(t => t.optionMetadata?.dayOfWeek === "Tuesday");
@@ -457,9 +427,6 @@ async function recalculateAggregatedStats(userId: string) {
       zeroDTEPnl,
       weeklyPnl,
       monthlyPnl,
-      morningPnl,
-      afternoonPnl,
-      eveningPnl,
       mondayPnl,
       tuesdayPnl,
       wednesdayPnl,
@@ -486,9 +453,6 @@ async function recalculateAggregatedStats(userId: string) {
       zeroDTEPnl,
       weeklyPnl,
       monthlyPnl,
-      morningPnl,
-      afternoonPnl,
-      eveningPnl,
       mondayPnl,
       tuesdayPnl,
       wednesdayPnl,
@@ -642,7 +606,6 @@ export async function updateTrade(id: string, formData: FormData) {
     throw new Error(`Invalid total return: ${totalReturnStr}`);
   }
 
-  const tradeTime = formData.get("tradeTime") as string | null;
   const exitPrice = formData.get("exitPrice") ? parseFloat(formData.get("exitPrice") as string) : null;
   const contracts = formData.get("contracts") ? parseInt(formData.get("contracts") as string) : null;
   const percentReturnStr = formData.get("percentReturn") as string;
@@ -662,20 +625,14 @@ export async function updateTrade(id: string, formData: FormData) {
   const strikePriceStr = formData.get("strikePrice") as string;
   const strikePrice = strikePriceStr ? parseFloat(strikePriceStr) : null;
 
-  // Combine date and time if time is provided
-  let finalDate = tradeDate;
-  if (tradeTime) {
-    const [hours, minutes] = tradeTime.split(":");
-    finalDate = new Date(tradeDate);
-    finalDate.setHours(parseInt(hours), parseInt(minutes));
-  }
+  // Use tradeDate as-is (date-only)
+  const finalDate = tradeDate;
 
   // Update trade
   const trade = await prisma.trade.update({
     where: { id },
     data: {
       tradeDate: finalDate,
-      tradeTime: tradeTime || null,
       ticker: ticker.toUpperCase(),
       assetType,
       entryPrice,
@@ -697,7 +654,6 @@ export async function updateTrade(id: string, formData: FormData) {
         expirationDate,
         strikePrice,
         is0DTE: expirationDate && new Date(expirationDate.getTime() - tradeDate.getTime()).getDate() === 0,
-        timeOfDay: getTimeOfDay(tradeTime),
         dayOfWeek: getDayOfWeek(finalDate),
       },
       create: {
@@ -705,7 +661,6 @@ export async function updateTrade(id: string, formData: FormData) {
         expirationDate,
         strikePrice,
         is0DTE: expirationDate && new Date(expirationDate.getTime() - tradeDate.getTime()).getDate() === 0,
-        timeOfDay: getTimeOfDay(tradeTime),
         dayOfWeek: getDayOfWeek(finalDate),
       },
     });
@@ -814,9 +769,6 @@ export async function deleteAllTrades() {
       zeroDTEPnl: 0,
       weeklyPnl: 0,
       monthlyPnl: 0,
-      morningPnl: 0,
-      afternoonPnl: 0,
-      eveningPnl: 0,
       mondayPnl: 0,
       tuesdayPnl: 0,
       wednesdayPnl: 0,
