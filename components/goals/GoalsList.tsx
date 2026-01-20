@@ -99,7 +99,7 @@ export function GoalsList({ goals }: GoalsListProps) {
                 {trend !== "neutral" && (
                   <div className={cn(
                     "flex items-center gap-1",
-                    trend === "up" ? "text-[#16C784]" : "text-[#EA3943]"
+                    trend === "up" ? "text-green-500" : "text-red-500"
                   )}>
                     {trend === "up" ? (
                       <TrendingUp className="h-4 w-4" />

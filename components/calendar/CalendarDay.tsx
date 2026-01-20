@@ -24,8 +24,8 @@ export function CalendarDay({ day, onClick }: CalendarDayProps) {
       onClick={onClick}
       className={cn(
         "aspect-square p-2 rounded-md border border-border/30 cursor-pointer transition-all hover:scale-105",
-        isProfit && "bg-[#16C784]/10 border-[#16C784]/30",
-        isLoss && "bg-[#EA3943]/10 border-[#EA3943]/30",
+        isProfit && "bg-green-500/10 border-green-500/30",
+        isLoss && "bg-red-500/10 border-red-500/30",
         isNeutral && hasTrades && "bg-muted border-border/30",
         !hasTrades && "bg-muted border-border/30 opacity-50"
       )}
@@ -36,8 +36,8 @@ export function CalendarDay({ day, onClick }: CalendarDayProps) {
           <>
             <div className={cn(
               "text-xs font-bold flex-1",
-              isProfit && "text-[#16C784]",
-              isLoss && "text-[#EA3943]",
+              isProfit && "text-green-500",
+              isLoss && "text-red-500",
               isNeutral && "text-foreground"
             )}>
               {formatCurrency(day.netPnl)}

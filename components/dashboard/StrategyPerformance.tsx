@@ -52,7 +52,7 @@ export function StrategyPerformance({ trades }: StrategyPerformanceProps) {
           {strategyData.map((item) => (
             <div key={item.strategy} className="flex items-center justify-between">
               <span className="font-medium">{item.strategy}</span>
-              <span className={item.pnl >= 0 ? "text-neon-green" : "text-red-500"}>
+              <span className={item.pnl >= 0 ? "text-green-500" : "text-red-500"}>
                 {formatCurrency(item.pnl)}
               </span>
             </div>

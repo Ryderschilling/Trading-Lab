@@ -14,7 +14,7 @@ export function ManualTradeForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [assetType, setAssetType] = useState<"Stock" | "Option">("Stock");
+  const [assetType, setAssetType] = useState<"Stock" | "Call" | "Put">("Stock");
   
   // Form state
   const [entryDate, setEntryDate] = useState("");
@@ -38,7 +38,7 @@ export function ManualTradeForm() {
     const entry = parseFloat(entryPrice) || 0;
     const exit = parseFloat(exitPrice) || entry;
     
-    if (assetType === "Option") {
+    if (assetType === "Call" || assetType === "Put") {
       const contractsNum = parseFloat(contracts) || 0;
       const totalInv = entry * contractsNum * 100;
       const profit = (exit - entry) * contractsNum * 100;
@@ -82,7 +82,7 @@ export function ManualTradeForm() {
       formData.append("entryPrice", entryPrice);
       formData.append("exitPrice", exitPrice || entryPrice);
       
-      if (assetType === "Option") {
+      if (assetType === "Call" || assetType === "Put") {
         formData.append("quantity", contracts); // Use contracts as quantity for options
         formData.append("contracts", contracts);
         if (strikePrice) formData.append("strikePrice", strikePrice);
@@ -96,17 +96,26 @@ export function ManualTradeForm() {
       formData.append("totalReturn", realizedProfit);
       formData.append("percentReturn", percentProfit);
       
-      await createTrade(formData);
+      try {
+        await createTrade(formData);
       
-      toast({
-        title: "Trade Saved",
-        description: "Your trade has been successfully saved.",
-        variant: "success",
-      });
+        toast({
+          title: "Trade Saved",
+          description: "Your trade has been successfully saved.",
+          variant: "success",
+        });
       
-      router.refresh();
-      
-      // Reset form
+        router.refresh();
+        // reset form ...
+      } catch (err: any) {
+        console.error("createTrade error:", err);
+        toast({
+          title: "Error saving trade",
+          description: err?.message ? String(err.message) : "An error occurred while saving the trade.",
+          variant: "destructive",
+        });
+        // do not rethrow — we handled the error and will let the UI continue
+      }
       setEntryDate("");
       setEntryTime("");
       setExitDate("");
@@ -139,13 +148,14 @@ export function ManualTradeForm() {
           {/* Asset Type Selector */}
           <div className="space-y-2">
             <Label htmlFor="assetType">Asset Type *</Label>
-            <Select value={assetType} onValueChange={(value) => setAssetType(value as "Stock" | "Option")} required>
+            <Select value={assetType} onValueChange={(value) => setAssetType(value as "Stock" | "Call" | "Put")} required>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Stock">Stock</SelectItem>
-                <SelectItem value="Option">Option</SelectItem>
+                <SelectItem value="Call">Call</SelectItem>
+                <SelectItem value="Put">Put</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -209,13 +219,15 @@ export function ManualTradeForm() {
             </div>
 
             {/* Strike Price (Options only) */}
-            {assetType === "Option" && (
+            {(assetType === "Call" || assetType === "Put") && (
               <div className="space-y-2">
                 <Label htmlFor="strikePrice">Strike Price *</Label>
                 <Input 
                   id="strikePrice" 
-                  type="number" 
-                  step="0.01" 
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9.]*"
+                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="150.00"
                   value={strikePrice}
                   onChange={(e) => setStrikePrice(e.target.value)}
@@ -229,8 +241,10 @@ export function ManualTradeForm() {
               <Label htmlFor="entryPrice">Entry Price *</Label>
               <Input 
                 id="entryPrice" 
-                type="number" 
-                step="0.01" 
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9.]*"
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="150.00"
                 value={entryPrice}
                 onChange={(e) => setEntryPrice(e.target.value)}
@@ -243,8 +257,10 @@ export function ManualTradeForm() {
               <Label htmlFor="exitPrice">Exit Price</Label>
               <Input 
                 id="exitPrice" 
-                type="number" 
-                step="0.01" 
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9.]*"
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="155.00"
                 value={exitPrice}
                 onChange={(e) => setExitPrice(e.target.value)}
@@ -257,7 +273,10 @@ export function ManualTradeForm() {
                 <Label htmlFor="quantity">Quantity *</Label>
                 <Input 
                   id="quantity" 
-                  type="number" 
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="100"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
@@ -269,7 +288,10 @@ export function ManualTradeForm() {
                 <Label htmlFor="contracts">Number of Contracts *</Label>
                 <Input 
                   id="contracts" 
-                  type="number" 
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="5"
                   value={contracts}
                   onChange={(e) => setContracts(e.target.value)}
@@ -298,7 +320,7 @@ export function ManualTradeForm() {
                 type="text" 
                 value={`$${realizedProfit}`}
                 readOnly
-                className={`bg-muted ${parseFloat(realizedProfit) >= 0 ? "text-neon-green" : "text-red-500"}`}
+                className={`bg-muted ${parseFloat(realizedProfit) >= 0 ? "text-green-500" : "text-red-500"}`}
               />
             </div>
 
@@ -310,7 +332,7 @@ export function ManualTradeForm() {
                 type="text" 
                 value={`${percentProfit}%`}
                 readOnly
-                className={`bg-muted ${parseFloat(percentProfit) >= 0 ? "text-neon-green" : "text-red-500"}`}
+                className={`bg-muted ${parseFloat(percentProfit) >= 0 ? "text-green-500" : "text-red-500"}`}
               />
             </div>
 

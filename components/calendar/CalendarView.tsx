@@ -108,7 +108,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, calendarD
             <CardContent>
               <div className={cn(
                 "text-2xl font-bold",
-                monthlyStats.netPnl > 0 ? "text-[#16C784]" : monthlyStats.netPnl < 0 ? "text-[#EA3943]" : "text-foreground"
+                monthlyStats.netPnl > 0 ? "text-green-500" : monthlyStats.netPnl < 0 ? "text-red-500" : "text-foreground"
               )}>
                 {formatCurrency(monthlyStats.netPnl)}
               </div>

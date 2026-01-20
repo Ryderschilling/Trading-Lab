@@ -196,8 +196,10 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     );
     
     // Determine if position is open or closed
-    const openQuantity = totalBuyQuantity - totalSellQuantity;
-    const isClosed = totalBuyQuantity > 0 && totalSellQuantity >= totalBuyQuantity;
+    // Support partial closes and scale in/out
+    const remainingQuantity = totalBuyQuantity - totalSellQuantity;
+    const isClosed = remainingQuantity <= 0;
+    const openQuantity = Math.max(remainingQuantity, 0);
     
     // Calculate average prices per unit (per share for stocks, per contract for options)
     // Use the price field from executions, weighted by quantity
@@ -231,17 +233,18 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
       : null;
     
     // Calculate P&L
-    // For closed positions: P&L = total sell proceeds - total buy cost
-    // totalBuyCost is the absolute value of buy amounts (cash outflow)
-    // totalSellProceeds is the absolute value of sell amounts (cash inflow)
-    // P&L = what we received - what we paid
-    const realizedPnL = isClosed 
-      ? [...openingExecutions, ...closingExecutions]
-          .reduce((sum, e) => sum + (e.amount || 0), 0)
+    // Include all closing executions even if trade is not fully closed (partial closes)
+    // realizedPnL = closing proceeds - opening cost for closed portion
+    const closingProceeds = closingExecutions.reduce((sum, e) => sum + Math.abs(e.amount || 0), 0);
+    const closedQuantityForPnL = isClosed ? totalBuyQuantity : totalSellQuantity;
+    const closedCost = closedQuantityForPnL > 0 
+      ? (totalBuyCost * closedQuantityForPnL) / totalBuyQuantity 
       : 0;
+    const realizedPnL = closingProceeds - closedCost;
     
-    const percentReturn = totalBuyCost > 0 && isClosed
-      ? (realizedPnL / totalBuyCost) * 100
+    // Calculate percent return based on closed portion
+    const percentReturn = closedCost > 0
+      ? (realizedPnL / closedCost) * 100
       : 0;
     
     // Get dates
@@ -253,8 +256,8 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     // Use first execution date as tradeDate (entry date)
     const tradeDate = entryDate;
     
-    // Determine closed quantity (min of buy and sell quantities for closed trades)
-    // For closed trades, use the closed quantity; for open, use the current open quantity
+    // Determine closed quantity for trade display
+    // For closed trades, use total buy quantity; for open, use the current open quantity
     const closedQuantity = isClosed 
       ? totalBuyQuantity
       : openQuantity;

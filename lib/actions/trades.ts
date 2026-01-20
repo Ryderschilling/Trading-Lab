@@ -279,14 +279,17 @@ export async function recalculateStats(userId: string, date?: Date) {
 }
 
 async function recalculateAggregatedStats(userId: string) {
-  // Only count CLOSED trades for all statistics
-  const closedTrades = await prisma.trade.findMany({
+  // Get all trades first
+  const allTrades = await prisma.trade.findMany({
     where: { 
       userId,
     },
     include: { optionMetadata: true },
     orderBy: { tradeDate: "asc" },
   });
+
+  // Filter to ONLY closed trades (have exitPrice)
+  const closedTrades = allTrades.filter(t => t.exitPrice !== null && t.exitPrice !== undefined);
 
   if (closedTrades.length === 0) {
     // If no closed trades, reset stats to defaults
@@ -354,6 +357,7 @@ async function recalculateAggregatedStats(userId: string) {
   const totalPnl = closedTrades.reduce((sum, t) => sum + t.totalReturn, 0);
   const wins = closedTrades.filter(t => t.totalReturn > 0);
   const losses = closedTrades.filter(t => t.totalReturn < 0);
+  // Win rate = wins / closed trades (not total trades)
   const winRate = closedTrades.length > 0 ? (wins.length / closedTrades.length) * 100 : 0;
   const avgWin = wins.length > 0 ? wins.reduce((sum, t) => sum + t.totalReturn, 0) / wins.length : 0;
   const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((sum, t) => sum + t.totalReturn, 0) / losses.length) : 0;

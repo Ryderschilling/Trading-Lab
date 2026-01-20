@@ -49,7 +49,7 @@ export function DayDetailsModal({ date, data, loading, onClose }: DayDetailsModa
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="p-4 rounded-lg border border-border">
               <div className="text-sm text-muted-foreground">Net P&L</div>
-              <div className={`text-2xl font-bold ${dailyPerf.netPnl >= 0 ? "text-neon-green" : "text-red-500"}`}>
+              <div className={`text-2xl font-bold ${dailyPerf.netPnl >= 0 ? "text-green-500" : "text-red-500"}`}>
                 {formatCurrency(dailyPerf.netPnl)}
               </div>
             </div>
@@ -98,10 +98,10 @@ export function DayDetailsModal({ date, data, loading, onClose }: DayDetailsModa
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`font-semibold ${trade.totalReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
+                        <div className={`font-semibold ${trade.totalReturn >= 0 ? "text-green-500" : "text-red-500"}`}>
                           {formatCurrency(trade.totalReturn)}
                         </div>
-                        <div className={`text-sm ${trade.percentReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
+                        <div className={`text-sm ${trade.percentReturn >= 0 ? "text-green-500" : "text-red-500"}`}>
                           {formatPercent(trade.percentReturn)}
                         </div>
                       </div>

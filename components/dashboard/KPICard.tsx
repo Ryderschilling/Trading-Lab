@@ -41,14 +41,14 @@ export function KPICard({ title, value, format = "number", trend, tooltip, custo
   if (isPerformanceMetric) {
     if (title === "Profit Factor") {
       // Profit factor: green if >= 1.0, red if < 1.0
-      colorClass = value >= 1.0 ? "text-[#16C784]" : "text-[#EA3943]";
+      colorClass = value >= 1.0 ? "text-green-500" : "text-red-500";
     } else if (title === "Largest Loss") {
       // Largest loss always red
-      colorClass = "text-[#EA3943]";
+      colorClass = "text-red-500";
     } else {
       // Other performance metrics: green if positive, red if negative
       const isPositive = value >= 0;
-      colorClass = isPositive ? "text-[#16C784]" : "text-[#EA3943]";
+      colorClass = isPositive ? "text-green-500" : "text-red-500";
     }
   } else {
     // Non-performance metrics: use foreground text

@@ -29,7 +29,7 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
         <CardContent>
           <div className={cn(
             "text-2xl font-bold",
-            stats.avgWin > 0 ? "text-[#16C784]" : stats.avgWin < 0 ? "text-[#EA3943]" : "text-foreground"
+            stats.avgWin > 0 ? "text-green-500" : stats.avgWin < 0 ? "text-red-500" : "text-foreground"
           )}>
             {formatCurrency(stats.avgWin)}
           </div>
@@ -43,10 +43,7 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={cn(
-            "text-2xl font-bold",
-            stats.avgLoss < 0 ? "text-[#EA3943]" : stats.avgLoss > 0 ? "text-[#16C784]" : "text-foreground"
-          )}>
+          <div className="text-2xl font-bold text-red-500">
             {formatCurrency(stats.avgLoss)}
           </div>
         </CardContent>
@@ -61,7 +58,7 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
         <CardContent>
           <div className={cn(
             "text-2xl font-bold",
-            stats.profitFactor >= 1.0 ? "text-[#16C784]" : stats.profitFactor < 1.0 ? "text-[#EA3943]" : "text-foreground"
+            stats.profitFactor >= 1.0 ? "text-green-500" : stats.profitFactor < 1.0 ? "text-red-500" : "text-foreground"
           )}>
             {formatNumber(stats.profitFactor)}
           </div>
@@ -104,7 +101,7 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
           <CardContent>
             <div className={cn(
               "text-2xl font-bold",
-              stats.largestWin > 0 ? "text-[#16C784]" : stats.largestWin < 0 ? "text-[#EA3943]" : "text-foreground"
+              stats.largestWin > 0 ? "text-green-500" : stats.largestWin < 0 ? "text-red-500" : "text-foreground"
             )}>
               {formatCurrency(stats.largestWin)}
             </div>
@@ -120,10 +117,7 @@ export function AdvancedStats({ stats }: AdvancedStatsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={cn(
-              "text-2xl font-bold",
-              stats.largestLoss < 0 ? "text-[#EA3943]" : stats.largestLoss > 0 ? "text-[#16C784]" : "text-foreground"
-            )}>
+            <div className="text-2xl font-bold text-red-500">
               {formatCurrency(stats.largestLoss)}
             </div>
           </CardContent>

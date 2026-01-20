@@ -67,7 +67,7 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
     const entry = parseFloat(entryPrice) || 0;
     const exit = parseFloat(exitPrice) || entry;
     
-    if (assetType === "Option") {
+    if (assetType === "Call" || assetType === "Put") {
       const contractsNum = parseFloat(contracts) || 0;
       const totalInv = entry * contractsNum * 100;
       const profit = (exit - entry) * contractsNum * 100;
@@ -99,7 +99,7 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
       formData.append("entryPrice", entryPrice);
       formData.append("exitPrice", exitPrice || entryPrice);
       
-      if (assetType === "Option") {
+      if (assetType === "Call" || assetType === "Put") {
         formData.append("quantity", contracts);
         formData.append("contracts", contracts);
         if (strikePrice) formData.append("strikePrice", strikePrice);
@@ -190,13 +190,14 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Asset Type *</Label>
-                <Select value={assetType} onValueChange={(value) => setAssetType(value as "Stock" | "Option")}>
+                <Select value={assetType} onValueChange={(value) => setAssetType(value as "Stock" | "Call" | "Put")}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Stock">Stock</SelectItem>
-                    <SelectItem value="Option">Option</SelectItem>
+                    <SelectItem value="Call">Call</SelectItem>
+                    <SelectItem value="Put">Put</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -216,32 +217,71 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
                 <Input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} required />
               </div>
 
-              {assetType === "Option" && (
+              {(assetType === "Call" || assetType === "Put") && (
                 <div className="space-y-2">
                   <Label>Strike Price *</Label>
-                  <Input type="number" step="0.01" value={strikePrice} onChange={(e) => setStrikePrice(e.target.value)} required />
+                  <Input 
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9.]*"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    value={strikePrice} 
+                    onChange={(e) => setStrikePrice(e.target.value)} 
+                    required 
+                  />
                 </div>
               )}
 
               <div className="space-y-2">
                 <Label>Entry Price *</Label>
-                <Input type="number" step="0.01" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} required />
+                <Input 
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9.]*"
+                  onWheel={(e) => e.currentTarget.blur()}
+                  value={entryPrice} 
+                  onChange={(e) => setEntryPrice(e.target.value)} 
+                  required 
+                />
               </div>
 
               <div className="space-y-2">
                 <Label>Exit Price</Label>
-                <Input type="number" step="0.01" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} />
+                <Input 
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9.]*"
+                  onWheel={(e) => e.currentTarget.blur()}
+                  value={exitPrice} 
+                  onChange={(e) => setExitPrice(e.target.value)} 
+                />
               </div>
 
               {assetType === "Stock" ? (
                 <div className="space-y-2">
                   <Label>Quantity *</Label>
-                  <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+                  <Input 
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    value={quantity} 
+                    onChange={(e) => setQuantity(e.target.value)} 
+                    required 
+                  />
                 </div>
               ) : (
                 <div className="space-y-2">
                   <Label>Number of Contracts *</Label>
-                  <Input type="number" value={contracts} onChange={(e) => setContracts(e.target.value)} required />
+                  <Input 
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    value={contracts} 
+                    onChange={(e) => setContracts(e.target.value)} 
+                    required 
+                  />
                 </div>
               )}
 
@@ -256,7 +296,7 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
                   type="text" 
                   value={`$${realizedProfit}`} 
                   readOnly 
-                  className={`bg-muted ${parseFloat(realizedProfit) >= 0 ? "text-neon-green" : "text-red-500"}`}
+                  className={`bg-muted ${parseFloat(realizedProfit) >= 0 ? "text-green-500" : "text-red-500"}`}
                 />
               </div>
 
@@ -266,7 +306,7 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
                   type="text" 
                   value={`${percentProfit}%`} 
                   readOnly 
-                  className={`bg-muted ${parseFloat(percentProfit) >= 0 ? "text-neon-green" : "text-red-500"}`}
+                  className={`bg-muted ${parseFloat(percentProfit) >= 0 ? "text-green-500" : "text-red-500"}`}
                 />
               </div>
 
@@ -360,14 +400,14 @@ export function TradeDetail({ trade: initialTrade }: TradeDetailProps) {
 
             <div>
               <Label className="text-muted-foreground">Realized Profit</Label>
-              <p className={`text-lg font-semibold ${initialTrade.totalReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
+              <p className={`text-lg font-semibold ${initialTrade.totalReturn >= 0 ? "text-green-500" : "text-red-500"}`}>
                 {formatCurrency(initialTrade.totalReturn)}
               </p>
             </div>
 
             <div>
               <Label className="text-muted-foreground">Percent Profit</Label>
-              <p className={`text-lg font-semibold ${initialTrade.percentReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
+              <p className={`text-lg font-semibold ${initialTrade.percentReturn >= 0 ? "text-green-500" : "text-red-500"}`}>
                 {formatPercent(initialTrade.percentReturn)}
               </p>
             </div>

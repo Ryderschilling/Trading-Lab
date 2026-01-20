@@ -65,10 +65,10 @@ export function RecentTrades({ trades }: RecentTradesProps) {
                 </div>
               </div>
               <div className="text-right">
-                <p className={trade.totalReturn >= 0 ? "text-neon-green font-semibold" : "text-red-500 font-semibold"}>
+                <p className={trade.totalReturn >= 0 ? "text-green-500 font-semibold" : "text-red-500 font-semibold"}>
                   {formatCurrency(trade.totalReturn)}
                 </p>
-                <p className={`text-sm ${trade.percentReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
+                <p className={`text-sm ${trade.percentReturn >= 0 ? "text-green-500" : "text-red-500"}`}>
                   {formatPercent(trade.percentReturn)}
                 </p>
               </div>

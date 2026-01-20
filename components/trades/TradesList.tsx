@@ -290,10 +290,10 @@ export function TradesList({ trades }: TradesListProps) {
                         )}
                       </td>
                       <td className="p-4 text-sm">{trade.assetType}</td>
-                      <td className={`p-4 text-right font-semibold ${trade.totalReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
+                      <td className={`p-4 text-right font-semibold ${trade.totalReturn >= 0 ? "text-green-500" : "text-red-500"}`}>
                         {formatCurrency(trade.totalReturn)}
                       </td>
-                      <td className={`p-4 text-right ${trade.percentReturn >= 0 ? "text-neon-green" : "text-red-500"}`}>
+                      <td className={`p-4 text-right ${trade.percentReturn >= 0 ? "text-green-500" : "text-red-500"}`}>
                         {formatPercent(trade.percentReturn)}
                       </td>
                       <td className="p-4 text-center">
