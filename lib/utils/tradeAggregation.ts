@@ -107,14 +107,14 @@ function createPositionKey(
  * Determine if a transaction type opens a position (buy)
  */
 function isOpeningTransaction(transactionType: string): boolean {
-  return ["BTO", "BUY", "STO"].includes(transactionType.toUpperCase());
+  return ["BTO", "BUY"].includes(transactionType.toUpperCase());
 }
 
 /**
  * Determine if a transaction type closes a position (sell)
  */
 function isClosingTransaction(transactionType: string): boolean {
-  return ["STC", "SELL", "BTC"].includes(transactionType.toUpperCase());
+  return ["STC", "SELL"].includes(transactionType.toUpperCase());
 }
 
 /**
@@ -236,8 +236,8 @@ export function buildTradesFromExecutions(executions: BrokerExecution[]): Aggreg
     // totalSellProceeds is the absolute value of sell amounts (cash inflow)
     // P&L = what we received - what we paid
     const realizedPnL = isClosed 
-      ? closingExecutions.reduce((sum, e) => sum + Math.abs(e.amount), 0)
-        - openingExecutions.reduce((sum, e) => sum + Math.abs(e.amount), 0)
+      ? [...openingExecutions, ...closingExecutions]
+          .reduce((sum, e) => sum + (e.amount || 0), 0)
       : 0;
     
     const percentReturn = totalBuyCost > 0 && isClosed
