@@ -18,7 +18,6 @@ const MAX_ROWS = 10000; // Maximum number of rows to process
 
 interface CSVRow {
   tradeDate: string;
-  tradeTime?: string;
   ticker: string;
   assetType: string;
   expirationDate?: string;
@@ -328,7 +327,6 @@ export function CSVUpload() {
             const formData = new FormData();
             
             formData.append("tradeDate", row.tradeDate || new Date().toISOString().split("T")[0]);
-            if (row.tradeTime) formData.append("tradeTime", row.tradeTime);
             formData.append("ticker", row.ticker || "");
             formData.append("assetType", row.assetType || "Stock");
             formData.append("entryPrice", row.entryPrice || "0");
@@ -404,7 +402,6 @@ export function CSVUpload() {
   const downloadTemplate = () => {
     const headers = [
       "tradeDate",
-      "tradeTime",
       "ticker",
       "assetType",
       "expirationDate",
