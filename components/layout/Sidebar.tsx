@@ -10,9 +10,9 @@ import {
   MessageSquare,
   Upload,
   Home,
-  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 import { List } from "lucide-react";
 
@@ -33,8 +33,8 @@ export function Sidebar() {
   return (
     <div className="w-20 bg-card border-r border-border/30 flex flex-col items-center py-6 space-y-8">
       <div className="flex items-center justify-center">
-        <div className="w-10 h-10 rounded-lg border border-border/10 flex items-center justify-center">
-          <Zap className="w-6 h-6 text-foreground" />
+        <div className="w-10 h-10 rounded-lg border border-border/10 flex items-center justify-center overflow-hidden">
+          <Image src="/logo.png" alt="Trading Lab" width={24} height={24} className="object-contain" />
         </div>
       </div>
       <nav className="flex-1 space-y-4">

@@ -79,3 +79,4 @@ After this, your app should work! The database will be connected and all tables 
 - Run `npx prisma generate` first, then `npx prisma db push`
 
 
+
