@@ -5,7 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type LogoProps = {
-  variant?: "header" | "page" | "default";
+  variant?: "header" | "page" | "loading" | "default";
   size?: "sm" | "md" | "lg";
   className?: string;
 };
@@ -26,6 +26,10 @@ export function Logo({ variant = "default", size = "md", className }: LogoProps)
     page: {
       container: "w-24 h-24",
       image: mounted ? 80 : 120,
+    },
+    loading: {
+      container: "w-32 h-32",
+      image: mounted ? 128 : 160,
     },
     default: {
       container: size === "sm" ? "w-6 h-6" : size === "lg" ? "w-16 h-16" : "w-10 h-10",
