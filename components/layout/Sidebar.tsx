@@ -10,11 +10,11 @@ import {
   MessageSquare,
   Upload,
   Home,
+  List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-
-import { List } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -29,17 +29,34 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="w-20 bg-card border-r border-border/30 flex flex-col items-center py-6 space-y-8">
+      {/* Logo */}
       <div className="flex items-center justify-center">
-        <div className="w-10 h-10 rounded-lg border border-border/10 flex items-center justify-center overflow-hidden">
-          <Image src="/logo.png" alt="Trading Lab" width={24} height={24} className="object-contain" />
+        <div className="w-24 h-24 flex items-center justify-center">
+          <Image
+            src="/logo.png"
+            alt="Trading Lab"
+            width={mounted ? 80 : 120}
+            height={mounted ? 80 : 120}
+            className="object-contain transition-all duration-300"
+            priority
+          />
         </div>
       </div>
+
+      {/* Navigation */}
       <nav className="flex-1 space-y-4">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || pathname?.startsWith(item.href);
+          const isActive =
+            pathname === item.href || pathname?.startsWith(item.href);
+
           return (
             <Link
               key={item.name}
@@ -61,4 +78,3 @@ export function Sidebar() {
     </div>
   );
 }
-
