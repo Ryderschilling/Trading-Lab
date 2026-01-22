@@ -1,57 +1,63 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  BarChart3,
+  Calendar,
+  Target,
+  BookOpen,
+  MessageSquare,
+  Upload,
+  Home,
+  List,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/ui/logo";
 
-type LogoProps = {
-  variant?: "header" | "page" | "loading" | "default";
-  size?: "sm" | "md" | "lg";
-  className?: string;
-};
+const navigation = [
+  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "AI", href: "/assistant", icon: MessageSquare },
+  { name: "Upload", href: "/upload", icon: Upload },
+  { name: "Trades", href: "/trades", icon: List },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Journal", href: "/journal", icon: BookOpen },
+  { name: "Goals", href: "/goals", icon: Target },
+];
 
-export function Logo({ variant = "default", size = "md", className }: LogoProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Size configurations based on variant and size prop
-  const sizeConfig = {
-    header: {
-      container: "w-8 h-8",
-      image: mounted ? 32 : 40,
-    },
-    page: {
-      container: "w-24 h-24",
-      image: mounted ? 80 : 120,
-    },
-    loading: {
-      container: "w-32 h-32",
-      image: mounted ? 128 : 160,
-    },
-    default: {
-      container: size === "sm" ? "w-6 h-6" : size === "lg" ? "w-16 h-16" : "w-10 h-10",
-      image: size === "sm" ? 24 : size === "lg" ? 64 : 40,
-    },
-  };
-
-  const config = sizeConfig[variant] || sizeConfig.default;
+export function Sidebar() {
+  const pathname = usePathname();
 
   return (
-    <div className={cn("flex items-center justify-center", config.container, className)}>
-      <Image
-        src="/logo.png"
-        alt="Trading Lab"
-        width={config.image}
-        height={config.image}
-        className={cn(
-          "object-contain transition-all duration-300",
-          !mounted && "opacity-0"
-        )}
-        priority={variant === "page"}
-      />
+    <div className="w-20 bg-card border-r border-border/30 flex flex-col items-center py-6 space-y-10">
+      {/* Logo */}
+      <Logo variant="page" />
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-4">
+        {navigation.map((item) => {
+          const isActive =
+            pathname === item.href || pathname?.startsWith(item.href);
+
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center p-3 rounded-lg transition-colors",
+                isActive
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              )}
+              title={item.name}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="text-xs mt-1">{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
