@@ -13,8 +13,7 @@ import {
   List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { Logo } from "@/components/ui/logo";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -29,27 +28,11 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
-    <div className="w-20 bg-card border-r border-border/30 flex flex-col items-center py-6 space-y-8">
+    <div className="w-20 bg-card border-r border-border/30 flex flex-col items-center py-6 space-y-10">
       {/* Logo */}
-      <div className="flex items-center justify-center">
-        <div className="w-24 h-24 flex items-center justify-center">
-          <Image
-            src="/logo.png"
-            alt="Trading Lab"
-            width={mounted ? 80 : 120}
-            height={mounted ? 80 : 120}
-            className="object-contain transition-all duration-300"
-            priority
-          />
-        </div>
-      </div>
+      <Logo variant="header" />
 
       {/* Navigation */}
       <nav className="flex-1 space-y-4">

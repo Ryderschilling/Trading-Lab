@@ -21,7 +21,7 @@ export function HomeContent() {
       <div className="text-center space-y-4">
         <div className="flex justify-center mb-4">
           <div className="w-16 h-16 rounded-lg border border-border/10 flex items-center justify-center overflow-hidden">
-            <Image src="/logo.png" alt="Trading Lab" width={48} height={48} className="object-contain" />
+            <Image src="/logo.png" alt="Trading Lab" width={80} height={80} className="object-contain" />
           </div>
         </div>
         <h1 className="text-4xl font-bold mb-4">Welcome to Trading Lab</h1>
