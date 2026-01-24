@@ -61,7 +61,7 @@ csvText: string
 
     // Create a set of existing trade keys for fast lookup
     const existingTradeKeys = new Set(
-      existingTrades.map(t => {
+      existingTrades.map((t: { tradeDate: Date; ticker: string; quantity: number; entryPrice: number; exitPrice: number | null }) => {
         const dateStr = new Date(t.tradeDate).toISOString().slice(0, 10);
         return `${dateStr}|${t.ticker}|${t.quantity}|${t.entryPrice}|${t.exitPrice || 0}`;
       })
@@ -102,7 +102,7 @@ csvText: string
     });
 
     // Ensure chronological order before aggregation (important for correct pairing)
-    storedExecutions.sort((a, b) => {
+    storedExecutions.sort((a: { activityDate: Date; id: string }, b: { activityDate: Date; id: string }) => {
       const aTime = new Date(a.activityDate).getTime();
       const bTime = new Date(b.activityDate).getTime();
       if (aTime !== bTime) return aTime - bTime;

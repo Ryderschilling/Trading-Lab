@@ -80,7 +80,7 @@ export async function getCalendarData(year: number, month: number) {
 
   // Create a map of daily performance by date
   const perfByDate = new Map(
-    dailyPerf.map((perf) => [
+    dailyPerf.map((perf: { date: Date }) => [
       new Date(perf.date).toISOString().split("T")[0],
       perf,
     ])
@@ -88,7 +88,7 @@ export async function getCalendarData(year: number, month: number) {
 
   // Create a map of journal entries by date
   const journalByDate = new Map(
-    journalEntries.map((entry) => [
+    journalEntries.map((entry: { date: Date }) => [
       new Date(entry.date).toISOString().split("T")[0],
       entry,
     ])
@@ -101,7 +101,7 @@ export async function getCalendarData(year: number, month: number) {
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month - 1, day);
     const dateStr = date.toISOString().split("T")[0];
-    const perf = perfByDate.get(dateStr);
+    const perf = perfByDate.get(dateStr) as { netPnl: number; tradeCount: number } | undefined;
     const dayTrades = tradesByDate.get(dateStr) || [];
     const journal = journalByDate.get(dateStr);
 
@@ -122,7 +122,7 @@ export async function getCalendarData(year: number, month: number) {
   let maxWinStreak = 0;
   let maxLossStreak = 0;
 
-  dailyPerf.forEach((perf) => {
+  dailyPerf.forEach((perf: { netPnl: number }) => {
     if (perf.netPnl > 0) {
       currentWinStreak++;
       currentLossStreak = 0;

@@ -2,15 +2,14 @@
   "name": "trading-lab",
   "version": "0.1.0",
   "private": true,
-"scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-
-  "prisma:check": "prisma migrate status",
-  "prisma:generate": "prisma generate",
-  "prisma:migrate": "prisma migrate dev"
-},
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "prisma:check": "prisma migrate status",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
   "dependencies": {
     "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
@@ -20,7 +19,7 @@
     "@capacitor/keyboard": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
     "@clerk/nextjs": "^5.0.0",
-    "@prisma/client": "^5.7.0",
+    "@prisma/client": "^6.0.0",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-label": "^2.0.2",
@@ -53,7 +52,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.0",
     "postcss": "^8",
-    "prisma": "^5.7.0",
+    "prisma": "^6.0.0",
     "tailwindcss": "^3.3.0",
     "typescript": "^5"
   }

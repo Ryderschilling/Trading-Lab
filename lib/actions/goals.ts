@@ -5,7 +5,19 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getStats, getDailyPerformance } from "./trades";
 
-export async function getGoals() {
+export async function getGoals(): Promise<Array<{
+  id: string;
+  userId: string;
+  name: string;
+  type: string;
+  targetValue: number;
+  timeframe: string;
+  currentValue: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  status: string;
+}>> {
   const user = await getCurrentUser();
   if (!user) return [];
 
@@ -32,20 +44,20 @@ export async function getGoals() {
         case "monthly_profit":
           currentValue = stats?.totalPnl || 0;
           // Get monthly P&L
-          const monthPnl = dailyPerf.reduce((sum, day) => sum + day.netPnl, 0);
+          const monthPnl = dailyPerf.reduce((sum: number, day: { netPnl: number }) => sum + day.netPnl, 0);
           currentValue = monthPnl;
           status = currentValue >= goal.targetValue ? "on_track" : currentValue >= goal.targetValue * 0.7 ? "at_risk" : "broken";
           break;
         case "max_daily_loss":
           const maxDailyLoss = dailyPerf.length > 0
-            ? Math.min(...dailyPerf.map(d => d.netPnl))
+            ? Math.min(...dailyPerf.map((d: { netPnl: number }) => d.netPnl))
             : 0;
           currentValue = Math.abs(maxDailyLoss);
           status = currentValue <= goal.targetValue ? "on_track" : "broken";
           break;
         case "max_trades_per_day":
           const maxTradesPerDay = dailyPerf.length > 0
-            ? Math.max(...dailyPerf.map(d => d.tradeCount))
+            ? Math.max(...dailyPerf.map((d: { tradeCount: number }) => d.tradeCount))
             : 0;
           currentValue = maxTradesPerDay;
           status = currentValue <= goal.targetValue ? "on_track" : "broken";
@@ -55,7 +67,7 @@ export async function getGoals() {
           status = currentValue >= goal.targetValue ? "on_track" : currentValue >= goal.targetValue * 0.9 ? "at_risk" : "broken";
           break;
         case "consistency":
-          const greenDays = dailyPerf.filter(d => d.netPnl > 0).length;
+          const greenDays = dailyPerf.filter((d: { netPnl: number }) => d.netPnl > 0).length;
           currentValue = dailyPerf.length > 0 ? (greenDays / dailyPerf.length) * 100 : 0;
           status = currentValue >= goal.targetValue ? "on_track" : currentValue >= goal.targetValue * 0.9 ? "at_risk" : "broken";
           break;

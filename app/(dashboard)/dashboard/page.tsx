@@ -51,8 +51,8 @@ export default async function DashboardPage() {
   const recentDays = dailyPerf.slice(-30);
   
   // Calculate Green vs Red Days from all daily performance
-  const greenDays = dailyPerf.filter(d => d.netPnl > 0).length;
-  const redDays = dailyPerf.filter(d => d.netPnl < 0).length;
+  const greenDays = dailyPerf.filter((d: { netPnl: number }) => d.netPnl > 0).length;
+  const redDays = dailyPerf.filter((d: { netPnl: number }) => d.netPnl < 0).length;
 
   return (
     <div className="space-y-6">

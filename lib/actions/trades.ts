@@ -166,16 +166,16 @@ export async function recalculateStats(userId: string, date?: Date) {
   });
 
   // All P/L calculations use Amount-based totalReturn only
-  const netPnl = trades.reduce((sum, t) => sum + t.totalReturn, 0);
-  const winCount = trades.filter(t => t.totalReturn > 0).length;
-  const lossCount = trades.filter(t => t.totalReturn < 0).length;
-  const wins = trades.filter(t => t.totalReturn > 0).map(t => t.totalReturn);
-  const losses = trades.filter(t => t.totalReturn < 0).map(t => Math.abs(t.totalReturn));
-  const avgWin = wins.length > 0 ? wins.reduce((a, b) => a + b, 0) / wins.length : null;
-  const avgLoss = losses.length > 0 ? losses.reduce((a, b) => a + b, 0) / losses.length : null;
+  const netPnl = trades.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const winCount = trades.filter((t: { totalReturn: number }) => t.totalReturn > 0).length;
+  const lossCount = trades.filter((t: { totalReturn: number }) => t.totalReturn < 0).length;
+  const wins = trades.filter((t: { totalReturn: number }) => t.totalReturn > 0).map((t: { totalReturn: number }) => t.totalReturn);
+  const losses = trades.filter((t: { totalReturn: number }) => t.totalReturn < 0).map((t: { totalReturn: number }) => Math.abs(t.totalReturn));
+  const avgWin = wins.length > 0 ? wins.reduce((a: number, b: number) => a + b, 0) / wins.length : null;
+  const avgLoss = losses.length > 0 ? losses.reduce((a: number, b: number) => a + b, 0) / losses.length : null;
   const largestWin = wins.length > 0 ? Math.max(...wins) : null;
   const largestLoss = losses.length > 0 ? Math.max(...losses) : null;
-  const totalVolume = trades.reduce((sum, t) => sum + t.totalInvested, 0);
+  const totalVolume = trades.reduce((sum: number, t: { totalInvested: number }) => sum + t.totalInvested, 0);
 
   await prisma.dailyPerformance.upsert({
     where: {
@@ -229,9 +229,9 @@ export async function recalculateStats(userId: string, date?: Date) {
   });
 
   // All P/L calculations use Amount-based totalReturn only
-  const monthPnl = monthTrades.reduce((sum, t) => sum + t.totalReturn, 0);
-  const monthWinCount = monthTrades.filter(t => t.totalReturn > 0).length;
-  const monthLossCount = monthTrades.filter(t => t.totalReturn < 0).length;
+  const monthPnl = monthTrades.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const monthWinCount = monthTrades.filter((t: { totalReturn: number }) => t.totalReturn > 0).length;
+  const monthLossCount = monthTrades.filter((t: { totalReturn: number }) => t.totalReturn < 0).length;
 
   const dailyPerfs = await prisma.dailyPerformance.findMany({
     where: {
@@ -243,10 +243,10 @@ export async function recalculateStats(userId: string, date?: Date) {
     },
   });
 
-  const greenDays = dailyPerfs.filter(d => d.netPnl > 0).length;
-  const redDays = dailyPerfs.filter(d => d.netPnl < 0).length;
-  const bestDay = dailyPerfs.length > 0 ? Math.max(...dailyPerfs.map(d => d.netPnl)) : null;
-  const worstDay = dailyPerfs.length > 0 ? Math.min(...dailyPerfs.map(d => d.netPnl)) : null;
+  const greenDays = dailyPerfs.filter((d: { netPnl: number }) => d.netPnl > 0).length;
+  const redDays = dailyPerfs.filter((d: { netPnl: number }) => d.netPnl < 0).length;
+  const bestDay = dailyPerfs.length > 0 ? Math.max(...dailyPerfs.map((d: { netPnl: number }) => d.netPnl)) : null;
+  const worstDay = dailyPerfs.length > 0 ? Math.min(...dailyPerfs.map((d: { netPnl: number }) => d.netPnl)) : null;
 
   await prisma.monthlyPerformance.upsert({
     where: {
@@ -296,7 +296,7 @@ export async function recalculateAggregatedStats(userId: string) {
   });
 
   // Filter to ONLY closed trades (have exitPrice)
-  const closedTrades = allTrades.filter(t => t.exitPrice !== null && t.exitPrice !== undefined);
+  const closedTrades = allTrades.filter((t: { exitPrice: number | null | undefined }) => t.exitPrice !== null && t.exitPrice !== undefined);
 
   if (closedTrades.length === 0) {
     // If no closed trades, reset stats to defaults
@@ -355,13 +355,13 @@ export async function recalculateAggregatedStats(userId: string) {
   }
 
   // All P/L calculations use Amount-based totalReturn only
-  const totalPnl = closedTrades.reduce((sum, t) => sum + t.totalReturn, 0);
-  const wins = closedTrades.filter(t => t.totalReturn > 0);
-  const losses = closedTrades.filter(t => t.totalReturn < 0);
+  const totalPnl = closedTrades.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const wins = closedTrades.filter((t: { totalReturn: number }) => t.totalReturn > 0);
+  const losses = closedTrades.filter((t: { totalReturn: number }) => t.totalReturn < 0);
   // Win rate = wins / closed trades (not total trades)
   const winRate = closedTrades.length > 0 ? (wins.length / closedTrades.length) * 100 : 0;
-  const avgWin = wins.length > 0 ? wins.reduce((sum, t) => sum + t.totalReturn, 0) / wins.length : 0;
-  const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((sum, t) => sum + t.totalReturn, 0) / losses.length) : 0;
+  const avgWin = wins.length > 0 ? wins.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0) / wins.length : 0;
+  const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0) / losses.length) : 0;
   
   // Average Trade P/L = Total realized P/L ÷ total number of closed trades
   const avgTradePnl = closedTrades.length > 0 ? totalPnl / closedTrades.length : 0;
@@ -369,43 +369,43 @@ export async function recalculateAggregatedStats(userId: string) {
   const profitFactor = avgLoss > 0 ? (avgWin * wins.length) / (avgLoss * losses.length) : 0;
   
   // Largest win and loss (using Amount-based P/L only)
-  const largestWin = wins.length > 0 ? Math.max(...wins.map(t => t.totalReturn)) : null;
-  const largestLoss = losses.length > 0 ? Math.abs(Math.min(...losses.map(t => t.totalReturn))) : null;
+  const largestWin = wins.length > 0 ? Math.max(...wins.map((t: { totalReturn: number }) => t.totalReturn)) : null;
+  const largestLoss = losses.length > 0 ? Math.abs(Math.min(...losses.map((t: { totalReturn: number }) => t.totalReturn))) : null;
 
   // Best/worst tickers (using Amount-based P/L only)
   const tickerPnl = new Map<string, number>();
-  closedTrades.forEach(trade => {
+  closedTrades.forEach((trade: { ticker: string; totalReturn: number }) => {
     tickerPnl.set(trade.ticker, (tickerPnl.get(trade.ticker) || 0) + trade.totalReturn);
   });
-  const bestTicker = Array.from(tickerPnl.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-  const worstTicker = Array.from(tickerPnl.entries()).sort((a, b) => a[1] - b[1])[0]?.[0] || null;
+  const bestTicker = Array.from(tickerPnl.entries()).sort((a: [string, number], b: [string, number]) => b[1] - a[1])[0]?.[0] || null;
+  const worstTicker = Array.from(tickerPnl.entries()).sort((a: [string, number], b: [string, number]) => a[1] - b[1])[0]?.[0] || null;
 
   // Options-specific stats (using Amount-based P/L only)
-  const calls = closedTrades.filter(t => t.assetType === "Call");
-  const puts = closedTrades.filter(t => t.assetType === "Put");
-  const stocks = closedTrades.filter(t => t.assetType === "Stock");
-  const callsPnl = calls.reduce((sum, t) => sum + t.totalReturn, 0);
-  const putsPnl = puts.reduce((sum, t) => sum + t.totalReturn, 0);
-  const stocksPnl = stocks.reduce((sum, t) => sum + t.totalReturn, 0);
+  const calls = closedTrades.filter((t: { assetType: string }) => t.assetType === "Call");
+  const puts = closedTrades.filter((t: { assetType: string }) => t.assetType === "Put");
+  const stocks = closedTrades.filter((t: { assetType: string }) => t.assetType === "Stock");
+  const callsPnl = calls.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const putsPnl = puts.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const stocksPnl = stocks.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
 
-  const zeroDTE = closedTrades.filter(t => t.optionMetadata?.is0DTE);
-  const weekly = closedTrades.filter(t => t.optionMetadata?.isWeekly);
-  const monthly = closedTrades.filter(t => t.optionMetadata?.isMonthly);
-  const zeroDTEPnl = zeroDTE.reduce((sum, t) => sum + t.totalReturn, 0);
-  const weeklyPnl = weekly.reduce((sum, t) => sum + t.totalReturn, 0);
-  const monthlyPnl = monthly.reduce((sum, t) => sum + t.totalReturn, 0);
+  const zeroDTE = closedTrades.filter((t: { optionMetadata?: { is0DTE: boolean } | null }) => t.optionMetadata?.is0DTE);
+  const weekly = closedTrades.filter((t: { optionMetadata?: { isWeekly: boolean } | null }) => t.optionMetadata?.isWeekly);
+  const monthly = closedTrades.filter((t: { optionMetadata?: { isMonthly: boolean } | null }) => t.optionMetadata?.isMonthly);
+  const zeroDTEPnl = zeroDTE.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const weeklyPnl = weekly.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const monthlyPnl = monthly.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
 
   // Day-of-week stats (using Amount-based P/L only)
-  const monday = closedTrades.filter(t => t.optionMetadata?.dayOfWeek === "Monday");
-  const tuesday = closedTrades.filter(t => t.optionMetadata?.dayOfWeek === "Tuesday");
-  const wednesday = closedTrades.filter(t => t.optionMetadata?.dayOfWeek === "Wednesday");
-  const thursday = closedTrades.filter(t => t.optionMetadata?.dayOfWeek === "Thursday");
-  const friday = closedTrades.filter(t => t.optionMetadata?.dayOfWeek === "Friday");
-  const mondayPnl = monday.reduce((sum, t) => sum + t.totalReturn, 0);
-  const tuesdayPnl = tuesday.reduce((sum, t) => sum + t.totalReturn, 0);
-  const wednesdayPnl = wednesday.reduce((sum, t) => sum + t.totalReturn, 0);
-  const thursdayPnl = thursday.reduce((sum, t) => sum + t.totalReturn, 0);
-  const fridayPnl = friday.reduce((sum, t) => sum + t.totalReturn, 0);
+  const monday = closedTrades.filter((t: { optionMetadata?: { dayOfWeek: string | null } | null }) => t.optionMetadata?.dayOfWeek === "Monday");
+  const tuesday = closedTrades.filter((t: { optionMetadata?: { dayOfWeek: string | null } | null }) => t.optionMetadata?.dayOfWeek === "Tuesday");
+  const wednesday = closedTrades.filter((t: { optionMetadata?: { dayOfWeek: string | null } | null }) => t.optionMetadata?.dayOfWeek === "Wednesday");
+  const thursday = closedTrades.filter((t: { optionMetadata?: { dayOfWeek: string | null } | null }) => t.optionMetadata?.dayOfWeek === "Thursday");
+  const friday = closedTrades.filter((t: { optionMetadata?: { dayOfWeek: string | null } | null }) => t.optionMetadata?.dayOfWeek === "Friday");
+  const mondayPnl = monday.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const tuesdayPnl = tuesday.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const wednesdayPnl = wednesday.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const thursdayPnl = thursday.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
+  const fridayPnl = friday.reduce((sum: number, t: { totalReturn: number }) => sum + t.totalReturn, 0);
 
   await prisma.aggregatedStats.upsert({
     where: { userId },

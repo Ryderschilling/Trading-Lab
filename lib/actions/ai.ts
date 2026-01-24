@@ -67,13 +67,13 @@ export async function askAI(question: string) {
   // Build context (sanitize sensitive data)
   const context = {
     stats: stats || {},
-    goals: (goals || []).map(g => ({
+    goals: (goals || []).map((g: { name: string | null; type: string | null; targetValue: number; currentValue: number }) => ({
       name: g.name || "",
       type: g.type || "",
       targetValue: g.targetValue || 0,
       currentValue: g.currentValue || 0,
     })),
-    journalEntries: (journalEntries || []).slice(0, 10).map(j => ({
+    journalEntries: (journalEntries || []).slice(0, 10).map((j: any) => ({
       date: j.date || null,
       breakfast: j.breakfast || null,
       caffeine: j.caffeine || null,

@@ -25,7 +25,7 @@ export function AIAssistant() {
     try {
       const history = await getConversationHistory(20);
       setMessages(
-        history.reverse().map((msg) => ({
+        history.reverse().map((msg: { role: string; content: string; createdAt: Date }) => ({
           role: msg.role,
           content: msg.content,
           timestamp: msg.createdAt,
