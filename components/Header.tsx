@@ -2,49 +2,74 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Menu, Bot, Bell, User } from "lucide-react";
 import NavigationMenu from "@/components/NavigationMenu";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <header className="w-full h-20 md:h-24 bg-background px-6">
-      <div className="grid grid-cols-3 items-center h-full">
+    <>
+      <header className="relative w-full h-28 md:h-32 bg-background px-8 flex items-center">
+        <div className="grid grid-cols-3 items-center w-full">
 
-        {/* LEFT: App Name */}
-        <div className="flex items-center gap-4">
-          <Menu
-            className="w-7 h-7 cursor-pointer transition-transform hover:scale-105"
-            onClick={() => setOpen(true)}
-          />
-          <span className="font-semibold text-xl md:text-2xl">
-            Trading Lab
-          </span>
-        </div>
+          {/* LEFT */}
+          <div className="flex items-center gap-4">
+            <Menu
+              className="w-8 h-8 cursor-pointer transition-transform hover:scale-110"
+              onClick={() => setOpen(true)}
+            />
+            <span className="font-semibold text-2xl md:text-3xl">
+              Trading Lab
+            </span>
+          </div>
 
-        {/* CENTER: LOGO */}
-        <div className="flex justify-center">
-          <Image
-            src="/logo.png"
-            alt="Trading Lab"
-            width={56}
-            height={56}
-            className="object-contain"
-          />
-        </div>
+          {/* CENTER LOGO */}
+          <div className="flex justify-center">
+            <Image
+              src="/logo.png"
+              alt="Trading Lab Logo"
+              width={240}
+              height={240}
+              priority
+              className="object-contain"
+            />
+          </div>
 
-        {/* RIGHT: ICONS */}
-        <div className="flex justify-end items-center gap-5">
-          <Bot className="w-6 h-6 cursor-pointer transition-opacity hover:opacity-70" />
-          <Bell className="w-6 h-6 cursor-pointer transition-opacity hover:opacity-70" />
-          <User className="w-6 h-6 cursor-pointer transition-opacity hover:opacity-70" />
+          {/* RIGHT ICONS */}
+          <div className="flex justify-end items-center gap-6 relative">
+  {/* AI */}
+  <Link href="/ai">
+    <Bot className="w-7 h-7 cursor-pointer hover:opacity-70" />
+  </Link>
 
-        </div>
+  {/* Notifications */}
+  <div className="relative">
+    <Bell
+      className="w-7 h-7 cursor-pointer hover:opacity-70"
+      onClick={() => setShowNotifications(!showNotifications)}
+    />
 
+    {showNotifications && (
+      <div className="absolute right-0 mt-4 w-72 rounded-xl bg-background border border-border shadow-xl p-4 z-50">
+        <p className="text-sm opacity-70">No notifications yet</p>
       </div>
+    )}
+  </div>
 
+  {/* Account */}
+  <Link href="/profile">
+    <User className="w-7 h-7 cursor-pointer hover:opacity-70" />
+  </Link>
+</div>
+
+        </div>
+      </header>
+
+      {/* MENU */}
       {open && <NavigationMenu onClose={() => setOpen(false)} />}
-    </header>
+    </>
   );
 }
