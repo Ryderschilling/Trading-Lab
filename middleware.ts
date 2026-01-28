@@ -1,24 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-// Required environment variables: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY
-const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-const clerkSecretKey = process.env.CLERK_SECRET_KEY;
-
-if (!clerkPublishableKey) {
-  throw new Error(
-    "Missing required environment variable: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY. " +
-    "Please configure this in your Vercel project settings."
-  );
-}
-
-if (!clerkSecretKey) {
-  throw new Error(
-    "Missing required environment variable: CLERK_SECRET_KEY. " +
-    "Please configure this in your Vercel project settings."
-  );
-}
-
 // Define routes that don't need Clerk authentication
 const isPublicRoute = createRouteMatcher([
   '/visual-editor(.*)',
@@ -31,6 +13,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // For other routes, Clerk will handle authentication
+  // Clerk will handle missing environment variables gracefully
   return NextResponse.next();
 });
 
