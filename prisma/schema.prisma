@@ -259,3 +259,12 @@ model BrokerExecution {
   @@map("broker_executions")
 }
 
+model UserSettings {
+  userId            String   @id
+  timezone          String   @default("UTC")
+  dateFormat        String   @default("yyyy-MM-dd")
+  tradingDayCutoff  Int      @default(0) // hour in user TZ
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+

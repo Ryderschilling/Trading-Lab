@@ -1,21 +1,125 @@
-import { getCurrentUser } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
-import { ProfileForm } from "@/components/profile/ProfileForm";
+"use client";
 
-export const dynamic = 'force-dynamic';
+import { useUser, UserButton, SignOutButton } from "@clerk/nextjs";
+import Image from "next/image";
 
-export default async function ProfilePage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
+export default function ProfilePage() {
+  const { user, isLoaded } = useUser();
 
-  const clerkUser = await currentUser();
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="animate-pulse text-muted-foreground">
+          Loading profile…
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <p className="text-muted-foreground">Not signed in</p>
+      </div>
+    );
+  }
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const lastSignIn = user.lastSignInAt
+    ? new Date(user.lastSignInAt).toLocaleString()
+    : "—";
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Profile</h1>
-      <ProfileForm user={user} clerkUser={clerkUser} />
+    <div className="flex justify-center mt-24 px-6">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-xl p-8 text-center">
+
+        {/* Avatar */}
+        <div className="flex justify-center mb-6">
+          <Image
+            src={user.imageUrl}
+            alt="Profile photo"
+            width={96}
+            height={96}
+            className="rounded-full border border-border"
+          />
+        </div>
+
+        {/* Name */}
+        <h1 className="text-2xl font-semibold">
+          {user.firstName} {user.lastName}
+        </h1>
+
+        {/* Email */}
+        <p className="mt-1 text-sm text-muted-foreground">
+          {user.emailAddresses[0]?.emailAddress}
+        </p>
+
+        {/* Actions */}
+        <div className="flex justify-center gap-4 mt-6">
+          <UserButton afterSignOutUrl="/" />
+          <SignOutButton>
+            <button className="text-sm text-muted-foreground hover:text-foreground transition">
+              Sign out
+            </button>
+          </SignOutButton>
+        </div>
+
+        {/* Divider */}
+        <div className="my-8 h-px bg-border" />
+
+        {/* Info */}
+        <div className="space-y-4 text-sm text-left">
+
+          <InfoRow label="Time Zone" value={timeZone} />
+          <InfoRow label="Today" value={today} />
+          <InfoRow label="Last Sign-In" value={lastSignIn} />
+
+          {/* Billing placeholder */}
+          <InfoRow
+            label="Plan"
+            value="Free"
+            muted
+          />
+
+        </div>
+
+        {/* Upgrade CTA */}
+        <div className="mt-8">
+          <button
+            className="
+              w-full rounded-xl px-4 py-2 text-sm font-medium
+              bg-primary text-primary-foreground
+              hover:opacity-90 transition
+            "
+          >
+            Upgrade Plan
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
+function InfoRow({
+  label,
+  value,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={muted ? "opacity-60" : ""}>{value}</span>
+    </div>
+  );
+}

@@ -49,12 +49,13 @@ export default function Header() {
             >
               <nav className="flex flex-col py-2">
                 {[
-                  { href: "/", label: "Dashboard" },
+                  { href: "/dashboard", label: "Dashboard" },
                   { href: "/analytics", label: "Analytics" },
                   { href: "/trades", label: "Trades" },
                   { href: "/journal", label: "Journal" },
                   { href: "/calendar", label: "Calendar" },
                   { href: "/upload", label: "Upload" },
+                  { href: "/assistant", label: "AI" },
                 ].map((item) => (
                   <Link
                     key={item.href}
@@ -76,22 +77,24 @@ export default function Header() {
 
         {/* CENTER — Logo */}
         <div className="flex justify-center">
+          <Link href="/dashboard">
           <Image
             src="/logo.png"
             alt="Trading Lab Logo"
             width={220}
             height={220}
             priority
-            className="object-contain"
+            className="cursor-pointer"
           />
+          </Link>
         </div>
 
         {/* RIGHT — Icons */}
         <div className="flex justify-end items-center gap-6 relative">
 
           {/* AI (Visual Editor) */}
-          <Link href="/visual-editor">
-            <Bot className="w-7 h-7 cursor-pointer hover:opacity-70 transition" />
+          <Link href="/assistant">
+            <Bot className="w-7 h-7 text-foreground cursor-pointer hover:opacity-80 transition" />
           </Link>
 
           {/* Notifications */}
@@ -120,8 +123,9 @@ export default function Header() {
           </div>
 
           {/* Account (disabled until page exists) */}
-          <User className="w-7 h-7 opacity-40 cursor-not-allowed" />
-
+          <Link href="/profile">
+          <User className="w-7 h-7 test-foreground cursor-pointer hover:opacity-80 transition" />   
+         </Link>
         </div>
       </div>
     </header>

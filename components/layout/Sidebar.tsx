@@ -18,7 +18,7 @@ import { Logo } from "@/components/ui/logo";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "AI", href: "/assistant", icon: MessageSquare },
+  { name: "AI", href: "/ai", icon: MessageSquare },
   { name: "Upload", href: "/upload", icon: Upload },
   { name: "Trades", href: "/trades", icon: List },
   { name: "Calendar", href: "/calendar", icon: Calendar },
