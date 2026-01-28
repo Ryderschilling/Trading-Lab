@@ -1,6 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+// Required environment variables: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY
+// Note: Validation happens at runtime, not build time, to allow successful builds
+
 // Define routes that don't need Clerk authentication
 const isPublicRoute = createRouteMatcher([
   '/visual-editor(.*)',
@@ -13,7 +16,6 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // For other routes, Clerk will handle authentication
-  // Clerk will handle missing environment variables gracefully
   return NextResponse.next();
 });
 
