@@ -69,9 +69,41 @@ export async function getCalendarData(year: number, month: number) {
     });
   }
 
-  return {
-    days,
-    monthlyStats,
-    streaks: { currentWinStreak: 0, currentLossStreak: 0, maxWinStreak: 0, maxLossStreak: 0 },
-  };
+  return {
+    days,
+    monthlyStats,
+    streaks: { currentWinStreak: 0, currentLossStreak: 0, maxWinStreak: 0, maxLossStreak: 0 },
+  };
+}
+
+export async function getDayDetails(date: Date) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      trades: [],
+      dailyPerf: null,
+      journal: null,
+    };
+  }
+
+  const dateKey = ymdFromDateUTC(date);
+  const start = new Date(`${dateKey}T00:00:00.000Z`);
+  const end = new Date(`${dateKey}T23:59:59.999Z`);
+  const dayKeyDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0));
+
+  const [trades, dailyPerf, journal] = await Promise.all([
+    prisma.trade.findMany({
+      where: { userId: user.id, tradeDate: { gte: start, lte: end } },
+      include: { optionMetadata: true },
+      orderBy: { tradeDate: "desc" },
+    }),
+    prisma.dailyPerformance.findFirst({
+      where: { userId: user.id, date: dayKeyDate },
+    }),
+    prisma.journalEntry.findFirst({
+      where: { userId: user.id, date: dayKeyDate },
+    }),
+  ]);
+
+  return { trades, dailyPerf, journal };
 }
