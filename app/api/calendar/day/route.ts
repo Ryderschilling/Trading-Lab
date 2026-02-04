@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 function isValidYMD(s: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
 // Store “date-only” as UTC noon to prevent timezone rollovers
