@@ -4,29 +4,51 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+
+function parseLocalDateToUTC(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error(`Invalid trade date format: ${dateStr}`);
+  }
+
+  // Noon UTC prevents DST & timezone shifting
+  return new Date(Date.UTC(year, month - 1, day, 12));
+}
 /**
  * Parse date string locally to avoid timezone shifting
  * Supports YYYY-MM-DD format and other common formats
  */
-function parseLocalDate(dateStr: string): Date {
-  // Try YYYY-MM-DD format first
-  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    return new Date(year, month - 1, day);
+function parseExpirationDateToUTC(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error(`Invalid expiration date format: ${dateStr}`);
   }
-  
-  // Try parsing with time component to avoid timezone shift, then extract local date
-  const parsed = new Date(dateStr + " 12:00:00");
-  if (!isNaN(parsed.getTime())) {
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-  }
-  
-  // Fallback to direct parsing
-  const fallback = new Date(dateStr);
-  if (isNaN(fallback.getTime())) {
-    throw new Error(`Invalid date format: ${dateStr}`);
-  }
-  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
+
+  // Use noon UTC to avoid DST issues
+  return new Date(Date.UTC(year, month - 1, day, 12));
+}
+
+function getUTCDayBounds(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+
+  const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+
+  return { start, end };
+}
+
+function getUTCMonthBounds(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+
+  const start = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
+
+  return { start, end };
 }
 
 export async function createTrade(formData: FormData) {
@@ -39,7 +61,7 @@ export async function createTrade(formData: FormData) {
     throw new Error("Trade date is required");
   }
   
-  const tradeDate = parseLocalDate(tradeDateStr);
+  const tradeDate = parseLocalDateToUTC(tradeDateStr);
 
   const ticker = (formData.get("ticker") as string)?.trim();
   if (!ticker) {
@@ -78,14 +100,15 @@ export async function createTrade(formData: FormData) {
   const notes = formData.get("notes") as string | null;
   
   let expirationDate: Date | null = null;
-  const expirationDateStr = formData.get("expirationDate") as string;
-  if (expirationDateStr) {
-    try {
-      expirationDate = parseLocalDate(expirationDateStr);
-    } catch {
-      expirationDate = null; // Invalid date, ignore it
-    }
+const expirationDateStr = formData.get("expirationDate") as string;
+
+if (expirationDateStr) {
+  try {
+    expirationDate = parseExpirationDateToUTC(expirationDateStr);
+  } catch {
+    expirationDate = null;
   }
+}
   
   const strikePriceStr = formData.get("strikePrice") as string;
   const strikePrice = strikePriceStr ? parseFloat(strikePriceStr) : null;
@@ -147,12 +170,9 @@ function getDayOfWeek(date: Date): string {
 
 export async function recalculateStats(userId: string, date?: Date) {
   // Recalculate daily performance for the trade date
-  const targetDate = date ? new Date(date) : new Date();
-  targetDate.setHours(0, 0, 0, 0);
-
-  const dayStart = new Date(targetDate);
-  const dayEnd = new Date(targetDate);
-  dayEnd.setHours(23, 59, 59, 999);
+  const baseDate = date ?? new Date();
+const { start: dayStart, end: dayEnd } = getUTCDayBounds(baseDate);
+const targetDate = dayStart;
 
   // Only count CLOSED trades for daily performance
   const trades = await prisma.trade.findMany({
@@ -211,11 +231,9 @@ export async function recalculateStats(userId: string, date?: Date) {
   });
 
   // Recalculate monthly performance
-  const year = targetDate.getFullYear();
-  const month = targetDate.getMonth() + 1;
-
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+  const { start: monthStart, end: monthEnd } = getUTCMonthBounds(targetDate);
+const year = monthStart.getUTCFullYear();
+const month = monthStart.getUTCMonth() + 1;
 
   // Only count CLOSED trades for monthly performance
   const monthTrades = await prisma.trade.findMany({
@@ -574,7 +592,7 @@ export async function updateTrade(id: string, formData: FormData) {
     throw new Error("Trade date is required");
   }
   
-  const tradeDate = parseLocalDate(tradeDateStr);
+  const tradeDate = parseLocalDateToUTC(tradeDateStr);
 
   const ticker = (formData.get("ticker") as string)?.trim();
   if (!ticker) {
@@ -613,14 +631,15 @@ export async function updateTrade(id: string, formData: FormData) {
   const notes = formData.get("notes") as string | null;
   
   let expirationDate: Date | null = null;
-  const expirationDateStr = formData.get("expirationDate") as string;
-  if (expirationDateStr) {
-    try {
-      expirationDate = parseLocalDate(expirationDateStr);
-    } catch {
-      expirationDate = null;
-    }
+const expirationDateStr = formData.get("expirationDate") as string;
+
+if (expirationDateStr) {
+  try {
+    expirationDate = parseExpirationDateToUTC(expirationDateStr);
+  } catch {
+    expirationDate = null;
   }
+}
   
   const strikePriceStr = formData.get("strikePrice") as string;
   const strikePrice = strikePriceStr ? parseFloat(strikePriceStr) : null;

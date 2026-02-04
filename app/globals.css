@@ -42,3 +42,147 @@
     @apply bg-background text-foreground;
   }
 }
+@layer utilities {
+  .bull-stroke {
+    stroke: rgba(255, 255, 255, 0.92);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.06));
+  }
+
+/* Bull logo draw animation (works for inline SVGs) */
+.bull-draw svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Override potrace-style fill-only SVG to stroke-only so it can be drawn */
+.bull-draw svg path,
+.bull-draw svg g,
+.bull-draw svg polygon,
+.bull-draw svg circle,
+.bull-draw svg rect {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Animate strokes */
+.bull-draw svg path {
+  stroke-dasharray: 2400;
+  stroke-dashoffset: 2400;
+  animation: bull-draw var(--bull-draw-ms, 2200ms) ease-in-out infinite;
+}
+
+@keyframes bull-draw {
+  0% {
+    stroke-dashoffset: 2400;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -2400;
+    opacity: 0;
+  }
+}
+
+  .bull-pulse {
+    animation-name: bull-pulse;
+    animation-duration: 1700ms;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-fill-mode: both;
+    transform-box: fill-box;
+  }
+
+  @keyframes bull-draw-in {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes bull-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.03);
+      opacity: 0.98;
+    }
+  }
+}
+.bull-draw path {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: bull-draw 2.2s ease-in-out infinite;
+}
+
+@keyframes bull-draw {
+  0% {
+    stroke-dashoffset: 1200;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -1200;
+    opacity: 0;
+  }
+}
+@keyframes bullPulse {
+  0% { transform: scale(0.98); opacity: 0.75; }
+  50% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(0.98); opacity: 0.75; }
+}
+
+@keyframes bullRing {
+  0% { transform: scale(0.9); opacity: 0.18; }
+  50% { transform: scale(1.2); opacity: 0.30; }
+  100% { transform: scale(0.9); opacity: 0.18; }
+}
+
+.bull-pulse {
+  animation: bullPulse 1200ms ease-in-out infinite;
+}
+
+.bull-pulse-ring {
+  background: radial-gradient(circle, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.0) 60%);
+  animation: bullRing 1200ms ease-in-out infinite;
+}
+
+/* shimmer “Loading…” */
+@keyframes shimmer {
+  0% { background-position: 200% 0; opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { background-position: -200% 0; opacity: 0.7; }
+}
+
+.bull-shimmer-text {
+  background: linear-gradient(90deg, rgba(255,255,255,0.35), rgba(255,255,255,0.95), rgba(255,255,255,0.35));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1400ms ease-in-out infinite;
+}

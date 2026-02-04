@@ -16,6 +16,7 @@ export default function NavigationMenu({
           { href: "/trades", label: "Trades" },
           { href: "/journal", label: "Journal" },
           { href: "/calendar", label: "Calendar" },
+          { href: "/goals", label: "Goals" },
           { href: "/upload", label: "Upload" },
           { href: "/assistant", label: "AI" },
         ].map((item) => (

@@ -8,11 +8,13 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="w-full min-h-screen p-6 overflow-y-auto">
-        {children}
+
+      {/* Page container (this is the key fix) */}
+      <main className="w-full">
+        <div className="mx-auto w-full max-w-7xl px-6 py-8">
+          {children}
+        </div>
       </main>
     </div>
   );
 }
-
-

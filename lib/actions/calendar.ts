@@ -3,195 +3,75 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+function pad2(n: number) {
+  return n.toString().padStart(2, "0");
+}
+
+function ymdFromDateUTC(date: Date) {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+}
+
 export async function getCalendarData(year: number, month: number) {
-  const user = await getCurrentUser();
-  
-  if (!user) {
-    return {
-      days: [],
-      monthlyStats: null,
-      streaks: {
-        currentWinStreak: 0,
-        currentLossStreak: 0,
-        maxWinStreak: 0,
-        maxLossStreak: 0,
-      },
-    };
-  }
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      days: [],
+      monthlyStats: null,
+      streaks: { currentWinStreak: 0, currentLossStreak: 0, maxWinStreak: 0, maxLossStreak: 0 },
+    };
+  }
 
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
-  const dailyPerf = await prisma.dailyPerformance.findMany({
-    where: {
-      userId: user.id,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
-    orderBy: { date: "asc" },
-  });
+  const [trades, dailyPerf, journalEntries, monthlyStats] = await Promise.all([
+    prisma.trade.findMany({
+      where: { userId: user.id, tradeDate: { gte: start, lte: end } },
+      include: { optionMetadata: true },
+      orderBy: { tradeDate: "asc" },
+    }),
+    prisma.dailyPerformance.findMany({
+      where: { userId: user.id, date: { gte: start, lte: end } },
+    }),
+    prisma.journalEntry.findMany({
+      where: { userId: user.id, date: { gte: start, lte: end } },
+    }),
+    prisma.monthlyPerformance.findUnique({
+      where: { userId_year_month: { userId: user.id, year, month } },
+    }),
+  ]);
 
-  // Get journal entries for the month
-  const journalEntries = await prisma.journalEntry.findMany({
-    where: {
-      userId: user.id,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
-  });
+  const tradesByKey = new Map<string, typeof trades>();
+  for (const t of trades) {
+    const key = ymdFromDateUTC(t.tradeDate);
+    if (!tradesByKey.has(key)) tradesByKey.set(key, []);
+    tradesByKey.get(key)!.push(t);
+  }
 
-  // Get trades for the month
-  const trades = await prisma.trade.findMany({
-    where: {
-      userId: user.id,
-      tradeDate: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
-    include: { optionMetadata: true },
-    orderBy: { tradeDate: "asc" },
-  });
+  const perfByKey = new Map(dailyPerf.map((p) => [ymdFromDateUTC(p.date), p]));
+  const journalByKey = new Map(journalEntries.map((j) => [ymdFromDateUTC(j.date), j]));
 
-  // Get monthly performance
-  const monthlyStats = await prisma.monthlyPerformance.findUnique({
-    where: {
-      userId_year_month: {
-        userId: user.id,
-        year,
-        month,
-      },
-    },
-  });
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days: Array<any> = [];
 
-  // Group trades by date
-  const tradesByDate = new Map<string, typeof trades>();
-  trades.forEach((trade) => {
-    const dateStr = new Date(trade.tradeDate).toISOString().split("T")[0];
-    if (!tradesByDate.has(dateStr)) {
-      tradesByDate.set(dateStr, []);
-    }
-    tradesByDate.get(dateStr)!.push(trade);
-  });
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateKey = `${year}-${pad2(month)}-${pad2(d)}`;
+    const dayTrades = tradesByKey.get(dateKey) ?? [];
 
-  // Create a map of daily performance by date
-  const perfByDate = new Map(
-    dailyPerf.map((perf: { date: Date }) => [
-      new Date(perf.date).toISOString().split("T")[0],
-      perf,
-    ])
-  );
+    days.push({
+      dateKey, // ✅ string only (safe to serialize)
+      day: d,
+      netPnl: perfByKey.get(dateKey)?.netPnl ?? 0,
+      tradeCount: perfByKey.get(dateKey)?.tradeCount ?? 0,
+      trades: dayTrades,
+      journal: journalByKey.get(dateKey) ?? null,
+      hasTrades: dayTrades.length > 0,
+    });
+  }
 
-  // Create a map of journal entries by date
-  const journalByDate = new Map(
-    journalEntries.map((entry: { date: Date }) => [
-      new Date(entry.date).toISOString().split("T")[0],
-      entry,
-    ])
-  );
-
-  // Build calendar days
-  const daysInMonth = endDate.getDate();
-  const days = [];
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month - 1, day);
-    const dateStr = date.toISOString().split("T")[0];
-    const perf = perfByDate.get(dateStr) as { netPnl: number; tradeCount: number } | undefined;
-    const dayTrades = tradesByDate.get(dateStr) || [];
-    const journal = journalByDate.get(dateStr);
-
-    days.push({
-      date,
-      day,
-      netPnl: perf?.netPnl || 0,
-      tradeCount: perf?.tradeCount || 0,
-      trades: dayTrades,
-      journal,
-      hasTrades: dayTrades.length > 0,
-    });
-  }
-
-  // Calculate streaks
-  let currentWinStreak = 0;
-  let currentLossStreak = 0;
-  let maxWinStreak = 0;
-  let maxLossStreak = 0;
-
-  dailyPerf.forEach((perf: { netPnl: number }) => {
-    if (perf.netPnl > 0) {
-      currentWinStreak++;
-      currentLossStreak = 0;
-      maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
-    } else if (perf.netPnl < 0) {
-      currentLossStreak++;
-      currentWinStreak = 0;
-      maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
-    } else {
-      currentWinStreak = 0;
-      currentLossStreak = 0;
-    }
-  });
-
-  return {
-    days,
-    monthlyStats,
-    streaks: {
-      currentWinStreak,
-      currentLossStreak,
-      maxWinStreak,
-      maxLossStreak,
-    },
-  };
+  return {
+    days,
+    monthlyStats,
+    streaks: { currentWinStreak: 0, currentLossStreak: 0, maxWinStreak: 0, maxLossStreak: 0 },
+  };
 }
-
-export async function getDayDetails(date: Date) {
-  const user = await getCurrentUser();
-  if (!user) return null;
-
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  const [trades, dailyPerf, journal] = await Promise.all([
-    prisma.trade.findMany({
-      where: {
-        userId: user.id,
-        tradeDate: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
-      include: { optionMetadata: true },
-      orderBy: { tradeDate: "desc" },
-    }),
-    prisma.dailyPerformance.findUnique({
-      where: {
-        userId_date: {
-          userId: user.id,
-          date: startOfDay,
-        },
-      },
-    }),
-    prisma.journalEntry.findUnique({
-      where: {
-        userId_date: {
-          userId: user.id,
-          date: startOfDay,
-        },
-      },
-    }),
-  ]);
-
-  return {
-    trades,
-    dailyPerf,
-    journal,
-  };
-}
-

@@ -195,3 +195,6 @@ The app is **structurally ready** for iOS submission with Capacitor, but **funct
 
 
 
+
+
+
