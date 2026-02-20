@@ -6,15 +6,20 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature");
-  if (!sig) return new NextResponse("Missing stripe-signature header", { status: 400 });
+  if (!sig) {
+    return new NextResponse("Missing stripe-signature header", { status: 400 });
+  }
 
   const whSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!whSecret) return new NextResponse("STRIPE_WEBHOOK_SECRET is not set", { status: 500 });
+  if (!whSecret) {
+    return new NextResponse("STRIPE_WEBHOOK_SECRET is not set", { status: 500 });
+  }
 
   const stripe = getStripe();
   const body = await req.text();
 
   let event: Stripe.Event;
+
   try {
     event = stripe.webhooks.constructEvent(body, sig, whSecret);
   } catch (err) {
@@ -35,16 +40,19 @@ export async function POST(req: Request) {
 
         if (!customerId || !subscriptionId) break;
 
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        const subRes = await stripe.subscriptions.retrieve(subscriptionId);
+        const sub = ((subRes as any).data ?? subRes) as any;
 
         await prisma.user.update({
           where: { id: appUserId },
           data: {
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
-            stripePriceId: sub.items.data[0]?.price?.id || null,
-            subscriptionStatus: sub.status,
-            stripeCurrentPeriodEnd: new Date(sub.current_period_end * 1000),
+            stripePriceId: sub?.items?.data?.[0]?.price?.id || null,
+            subscriptionStatus: sub?.status ?? null,
+            stripeCurrentPeriodEnd: new Date(
+              (((sub?.current_period_end ?? 0) as number) * 1000)
+            ),
           },
         });
 
@@ -53,14 +61,16 @@ export async function POST(req: Request) {
 
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
+        const sub = event.data.object as any;
 
         await prisma.user.updateMany({
-          where: { stripeSubscriptionId: sub.id },
+          where: { stripeSubscriptionId: sub?.id },
           data: {
-            subscriptionStatus: sub.status,
-            stripePriceId: sub.items.data[0]?.price?.id || null,
-            stripeCurrentPeriodEnd: new Date(sub.current_period_end * 1000),
+            subscriptionStatus: sub?.status ?? null,
+            stripePriceId: sub?.items?.data?.[0]?.price?.id || null,
+            stripeCurrentPeriodEnd: new Date(
+              (((sub?.current_period_end ?? 0) as number) * 1000)
+            ),
           },
         });
 
@@ -68,7 +78,7 @@ export async function POST(req: Request) {
       }
 
       default:
-        // Intentionally ignore other events
+        // Ignore other Stripe events
         break;
     }
 
