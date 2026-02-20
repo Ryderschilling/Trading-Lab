@@ -11,11 +11,21 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
+  id                     String   @id @default(cuid())
   clerkId       String   @unique
   email         String   @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+    acceptedTermsAt        DateTime?
+  acceptedPrivacyAt      DateTime?
+  acceptedDisclaimerAt   DateTime?
+  acceptedAIPolicyAt     DateTime?
+  stripeCustomerId      String?  @unique
+stripeSubscriptionId  String?  @unique
+stripePriceId         String?
+stripeCurrentPeriodEnd DateTime?
+subscriptionStatus    String?  // e.g. "active", "trialing", "canceled"
+
 
   trades            Trade[]
   dailyPerformance  DailyPerformance[]
@@ -33,7 +43,7 @@ model User {
 model Trade {
   id              String   @id @default(cuid())
   userId          String
-  tradeDate       DateTime @db.Date
+  tradeDate       DateTime
   ticker          String
   assetType       String // Stock, Call, Put
   entryPrice      Float

@@ -1,17 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { useUser, UserButton, SignOutButton } from "@clerk/nextjs";
 import Image from "next/image";
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser();
+  const [deleting, setDeleting] = useState(false);
 
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="animate-pulse text-muted-foreground">
-          Loading profile…
-        </div>
+        <div className="animate-pulse text-muted-foreground">Loading profile…</div>
       </div>
     );
   }
@@ -32,14 +32,37 @@ export default function ProfilePage() {
     day: "numeric",
   });
 
-  const lastSignIn = user.lastSignInAt
-    ? new Date(user.lastSignInAt).toLocaleString()
-    : "—";
+  const lastSignIn = user.lastSignInAt ? new Date(user.lastSignInAt).toLocaleString() : "—";
+
+  async function handleDeleteAccount() {
+    const confirmDelete = confirm(
+      "This will permanently delete your account and all data. This cannot be undone. Continue?"
+    );
+    if (!confirmDelete) return;
+
+    setDeleting(true);
+
+    try {
+      const res = await fetch("/api/account/delete", { method: "DELETE" });
+
+      if (res.ok) {
+        // Account is deleted (including Clerk user). Hard redirect avoids client state weirdness.
+        window.location.href = "/";
+        return;
+      }
+
+      const msg = await res.text().catch(() => "");
+      alert(msg || "Failed to delete account.");
+      setDeleting(false);
+    } catch {
+      alert("Failed to delete account.");
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="flex justify-center mt-24 px-6">
       <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-xl p-8 text-center">
-
         {/* Avatar */}
         <div className="flex justify-center mb-6">
           <Image
@@ -76,18 +99,12 @@ export default function ProfilePage() {
 
         {/* Info */}
         <div className="space-y-4 text-sm text-left">
-
           <InfoRow label="Time Zone" value={timeZone} />
           <InfoRow label="Today" value={today} />
           <InfoRow label="Last Sign-In" value={lastSignIn} />
 
           {/* Billing placeholder */}
-          <InfoRow
-            label="Plan"
-            value="Free"
-            muted
-          />
-
+          <InfoRow label="Plan" value="Free" muted />
         </div>
 
         {/* Upgrade CTA */}
@@ -102,6 +119,16 @@ export default function ProfilePage() {
             Upgrade Plan
           </button>
         </div>
+
+        {/* ✅ Minimal delete link (ONLY addition) */}
+        <button
+          type="button"
+          onClick={handleDeleteAccount}
+          disabled={deleting}
+          className="mt-8 text-sm text-red-500 hover:text-red-600 underline disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {deleting ? "Deleting account..." : "Delete account"}
+        </button>
       </div>
     </div>
   );

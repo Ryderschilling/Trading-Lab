@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatDateUTC } from "@/lib/utils/formatDateUTC"
 
 interface Trade {
   id: string;
@@ -279,7 +280,7 @@ export function TradesList({ trades }: TradesListProps) {
                   filteredTrades.map((trade) => (
                     <tr key={trade.id} className="border-t border-border hover:bg-muted/50">
                       <td className="p-4 text-sm">
-                        {format(new Date(trade.tradeDate), "MMM dd, yyyy")}
+                        {formatDateUTC(trade.tradeDate)}
                       </td>
                       <td className="p-4">
                         <div className="font-semibold">{trade.ticker}</div>

@@ -1,12 +1,10 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatPercent, formatNumber, cn } from "@/lib/utils";
+import { formatCurrency, formatNumber, cn } from "@/lib/utils";
 
 interface AdvancedStatsProps {
   stats: {
-    totalPnl: number;
-    winRate: number;
     avgWin: number;
     avgLoss: number;
     profitFactor: number;
@@ -17,113 +15,83 @@ interface AdvancedStatsProps {
   };
 }
 
-export function AdvancedStats({ stats }: AdvancedStatsProps) {
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "green" | "red" | "neutral";
+}) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Average Win
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "text-2xl font-bold",
-            stats.avgWin > 0 ? "text-green-500" : stats.avgWin < 0 ? "text-red-500" : "text-foreground"
-          )}>
-            {formatCurrency(stats.avgWin)}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Average Loss
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-red-500">
-            {formatCurrency(stats.avgLoss)}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Profit Factor
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "text-2xl font-bold",
-            stats.profitFactor >= 1.0 ? "text-green-500" : stats.profitFactor < 1.0 ? "text-red-500" : "text-foreground"
-          )}>
-            {formatNumber(stats.profitFactor)}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Best Ticker
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-foreground">
-            {stats.bestTicker || "N/A"}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Worst Ticker
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-foreground">
-            {stats.worstTicker || "N/A"}
-          </div>
-        </CardContent>
-      </Card>
-
-      {stats.largestWin !== null && stats.largestWin !== undefined && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Largest Win
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={cn(
-              "text-2xl font-bold",
-              stats.largestWin > 0 ? "text-green-500" : stats.largestWin < 0 ? "text-red-500" : "text-foreground"
-            )}>
-              {formatCurrency(stats.largestWin)}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {stats.largestLoss !== null && stats.largestLoss !== undefined && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Largest Loss
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">
-              {formatCurrency(stats.largestLoss)}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    <Card className="border-border/30">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs font-medium text-muted-foreground">
+          {label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div
+          className={cn(
+            "text-xl font-semibold tracking-tight",
+            tone === "green" ? "text-green-500" : tone === "red" ? "text-red-500" : "text-foreground"
+          )}
+        >
+          {value}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
+export function AdvancedStats({ stats }: AdvancedStatsProps) {
+  const cards = [
+    {
+      label: "Average Win",
+      value: formatCurrency(stats.avgWin),
+      tone: stats.avgWin > 0 ? "green" : stats.avgWin < 0 ? "red" : "neutral",
+    },
+    {
+      label: "Average Loss",
+      value: formatCurrency(stats.avgLoss),
+      tone: "red",
+    },
+    {
+      label: "Profit Factor",
+      value: formatNumber(stats.profitFactor),
+      tone: stats.profitFactor >= 1 ? "green" : "red",
+    },
+    { label: "Best Ticker", value: stats.bestTicker || "N/A", tone: "neutral" },
+    { label: "Worst Ticker", value: stats.worstTicker || "N/A", tone: "neutral" },
+    ...(stats.largestWin !== null && stats.largestWin !== undefined
+      ? [
+          {
+            label: "Largest Win",
+            value: formatCurrency(stats.largestWin),
+            tone: stats.largestWin > 0 ? "green" : "neutral",
+          },
+        ]
+      : []),
+    ...(stats.largestLoss !== null && stats.largestLoss !== undefined
+      ? [
+          {
+            label: "Largest Loss",
+            value: formatCurrency(stats.largestLoss),
+            tone: "red",
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-semibold">Trade Stats</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        {cards.map((c) => (
+          <StatCard key={c.label} label={c.label} value={c.value} tone={c.tone as any} />
+        ))}
+      </div>
+    </div>
+  );
+}

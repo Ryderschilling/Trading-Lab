@@ -16,24 +16,19 @@ export const metadata: Metadata = {
   },
 };
 
-// Ensure Clerk publishable key is configured
-// Required environment variable: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-// Note: Validation happens at runtime, not build time, to allow successful builds
-const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey}>
-      <html lang="en">
-        <body className={inter.className}>
+    <html lang="en">
+      <body className={inter.className}>
+        <ClerkProvider>
           {children}
           <Toaster />
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
